@@ -23,5 +23,7 @@ $$
 Use variable $y$ which is a function of $\alpha$ and $\beta$ as to do the likelihood fit.
 
 $$
-y = e^{- (\alpha + \beta)^2}
+y = N(k\alpha + q\beta, 1),
 $$
+
+where $k$ and $q$ can be set to decrease or increases the dependence of $\alpha$ and $\beta$.
