@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import kl_div
+import os
+
+os.makedirs(os.path.dirname("./plots"), exist_ok=True)
 
 def get_kl_div(p,q):
     div_arr = np.where(np.logical_and(p>0,q>0),kl_div(p,q),0)
@@ -67,7 +70,7 @@ def plot_gen_SR_bkg_in_y_cond_list(samples_list, Y_SR, k, q):
         sample2.append(np.array(samples[:,0]))
     N = len(sample2)
     if N==len(Y_SR) and N==len(k) and N==len(q) and N<len(colors):
-        bins = np.linspace(-5, 5, 50)
+        bins = np.linspace(-6, 8, 50)
         fig, ax1 = plt.subplots(figsize=(12,8))
         for i in range(N):
             c0, cbins, _ = ax1.hist(Y_SR[i], bins = bins, density = True, histtype='stepfilled', alpha = 0.5, color=f"light{colors[i]}", label=f"true SR, k={k[i]} q={q[i]}")
