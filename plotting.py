@@ -19,8 +19,8 @@ def plot_gen_full_bkg(samples, x1, x2):
     plt.axvline(x=1, color='r', linestyle='-')
     plt.legend()
     plt.title("Generated full bkg distribution from training full bkg samples.")
-    plt.show()
-    plt.savefig('plots/gen_full_bkg.png')
+    plt.show
+    plt.savefig('plots/gen_full_bkg.pdf')
     plt.close
     
 def plot_gen_SRfromCR_bkg(samples, x1, x2):
@@ -33,8 +33,8 @@ def plot_gen_SRfromCR_bkg(samples, x1, x2):
     plt.axvline(x=1, color='r', linestyle='-')
     plt.legend()
     plt.title("Generated full bkg distribution from training CR samples.")
-    plt.show()
-    plt.savefig('plots/gen_SRfromCR_bkg.png')
+    plt.show
+    plt.savefig('plots/gen_SRfromCR_bkg.pdf')
     plt.close
     
 def plot_gen_SR_bkg_in_y_random(samples, Y_SR):
@@ -46,7 +46,7 @@ def plot_gen_SR_bkg_in_y_random(samples, Y_SR):
     plt.title("Generated bkg distribution in y = random.")
     plt.legend()
     plt.show
-    plt.savefig('plots/gen_SR_bkg_in_y_random.png')
+    plt.savefig('plots/gen_SR_bkg_in_y_random.pdf')
     plt.close
     
 def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
@@ -58,7 +58,7 @@ def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
     plt.title(f"Generated bkg in y = N(${k}\\alpha$+{q}$\\beta$, 1)")
     plt.legend()
     plt.show
-    plt.savefig(f'plots/gen_SR_bkg_in_y_cond{k*10}.png')
+    plt.savefig(f'plots/gen_SR_bkg_in_y_cond{k*10}.pdf')
     plt.close
 
 def plot_bkg_in_y_cond_list(Y_list, Y_list2, Y_label, Y_label2, k, q):
@@ -76,7 +76,7 @@ def plot_bkg_in_y_cond_list(Y_list, Y_list2, Y_label, Y_label2, k, q):
         ax1.set_xlabel("y")
         plt.legend(loc='upper left', fontsize = 14)
         plt.show
-        plt.savefig(f"plots/{Y_label}_{Y_label2}_in_y_cond.png")
+        plt.savefig(f"plots/{Y_label}_{Y_label2}_in_y_cond.pdf")
         plt.close
     else:
         print("Wrong input lists!")
@@ -99,7 +99,7 @@ def plot_gen_SR_bkg_in_y_cond_list(samples_list, Y_SR, k, q):
         ax1.set_xlabel("y")
         plt.legend(loc='upper left', fontsize = 14)
         plt.show
-        plt.savefig('plots/gen_SR_bkg_in_y_cond.png')
+        plt.savefig('plots/gen_SR_bkg_in_y_cond.pdf')
         plt.close
     else:
         print("Wrong input lists!")
