@@ -61,36 +61,33 @@ def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
     plt.savefig(f'plots/gen_SR_bkg_in_y_cond{k*10}.pdf')
     plt.close
 
-def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, q=None):
-    colors = ['blue', 'green', 'slategrey', 'steelblue']
+    
+def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, q=None, title="Normal(mean = $k\\alpha$, $\sigma$ = 1)", tag = "", ymin=-6, ymax=10, *args, **kwargs):
+    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     
     N = len(Y_list)
     
     if N==len(Y_list2) and N==len(k) and N<=len(colors):
-        bins = np.linspace(-6, 8, 50)
-        fig, ax1 = plt.subplots(figsize=(12,8))
+        bins = np.linspace(ymin, ymax, 50)
+        fig, ax1 = plt.subplots(figsize=(10,6))
         
         for i in range(N):
             
             if q is None:
-                label_kq = f"k={k[i]}"
-                title_kq = "$k\\alpha$"
-                tag = "1DSR"
+                label_kq=f"k={k[i]}"
             elif N==len(q):
-                label_kq = f"k={k[i]} q={q[i]}"
-                title_kq = "$k\\alpha$+q$\\beta$"
-                tag = "2DSR"
+                label_kq=f"k={k[i]}, q={q[i]}"
             else:
                 print("Wrong q lists!")
                 break
             
             c0, cbins, _ = ax1.hist(Y_list[i], bins = bins, density = True, histtype='step', color=colors[i], label=f"{Y_label}, {label_kq}")
-            c1, cbins, _ = ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0.5, color=f"light{colors[i]}", label=f"{Y_label2}, {label_kq}")
+            c1, cbins, _ = ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0.3, color=colors[i], label=f"{Y_label2}, {label_kq}")
             kl_div = get_kl_div(c0,c1)
-            ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0.5, color=f"light{colors[i]}", label=f"kl div={kl_div:.3f}")
-        ax1.set_title(f"Background in y = Normal(mean = {title_kq}, $\sigma$ = 1)", fontsize = 14)
+            ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[i], label=f"kl div={kl_div:.3f}")
+        ax1.set_title(f"Background in y = {title}", fontsize = 14)
         ax1.set_xlabel("y")
-        plt.legend(loc='upper left', fontsize = 14)
+        plt.legend(loc='upper left', fontsize = 10)
         plt.show
         plt.savefig(f"plots/{Y_label}_{Y_label2}_in_y_{tag}.pdf")
         plt.close
