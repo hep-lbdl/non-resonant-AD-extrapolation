@@ -1,4 +1,6 @@
 import numpy as np
+from math import pi
+from fractions import Fraction
 import matplotlib.pyplot as plt
 from scipy.special import kl_div
 import os
@@ -61,8 +63,10 @@ def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
     plt.savefig(f'plots/gen_SR_bkg_in_y_cond{k*10}.pdf')
     plt.close
 
+def pi_to_string(theta):
+    return f"({str(Fraction(theta/pi))})$\\pi$"
     
-def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, q=None, title="Normal(mean = $k\\alpha$, $\sigma$ = 1)", tag = "", ymin=-6, ymax=10, *args, **kwargs):
+def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, title="Normal($k(cos\\theta\\alpha + sin\\theta\\beta)$, 1)", tag = "", ymin=-6, ymax=10, *args, **kwargs):
     colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     
     N = len(Y_list)
@@ -73,23 +77,40 @@ def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, q=None, title="Normal(mea
         
         for i in range(N):
             
-            if q is None:
-                label_kq=f"k={k[i]}"
-            elif N==len(q):
-                label_kq=f"k={k[i]}, q={q[i]}"
+            if theta is None:
+                label_k=f"k={k[i]}"
+            elif N==len(theta):
+                label_k=f"k={k[i]}, $\\theta$={pi_to_string(theta[i])}"
             else:
-                print("Wrong q lists!")
+                print("Wrong theta lists!")
                 break
             
-            c0, cbins, _ = ax1.hist(Y_list[i], bins = bins, density = True, histtype='step', color=colors[i], label=f"{Y_label}, {label_kq}")
-            c1, cbins, _ = ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0.3, color=colors[i], label=f"{Y_label2}, {label_kq}")
+            c0, cbins, _ = ax1.hist(Y_list[i], bins = bins, density = True, histtype='step', color=colors[i], label=f"{Y_label}, {label_k}")
+            c1, cbins, _ = ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0.3, color=colors[i], label=f"{Y_label2}, {label_k}")
             kl_div = get_kl_div(c0,c1)
             ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[i], label=f"kl div={kl_div:.3f}")
         ax1.set_title(f"Background in y = {title}", fontsize = 14)
         ax1.set_xlabel("y")
-        plt.legend(loc='upper left', fontsize = 10)
+        plt.legend(loc='upper left', fontsize = 9)
         plt.show
-        plt.savefig(f"plots/{Y_label}_{Y_label2}_in_y_{tag}.pdf")
+        plot_name = f"plots/{Y_label}_{Y_label2}_{tag}.pdf"
+        plt.savefig(plot_name.replace(" ", "_"))
         plt.close
     else:
         print("Wrong input lists!")
+        
+def plot_results(k_list, theta_list, Y_list, samples_CR_list, samples_SR_list, mask_CR, mask_SR, plot_kwargs):
+    Y_SR_list = []
+    Y_CR_list = []
+    Y_gen_CR_list = []
+    Y_gen_SR_list = []
+
+    for i in range(len(k_list)):
+        Y_SR_list.append(Y_list[i][mask_SR])
+        Y_CR_list.append(Y_list[i][mask_CR])
+        Y_gen_CR_list.append(samples_CR_list[i])
+        Y_gen_SR_list.append(samples_SR_list[i])
+
+    plot_kl_div(Y_SR_list, Y_CR_list, "true SR", "true CR", k_list, theta_list, **plot_kwargs)
+    plot_kl_div(Y_CR_list, Y_gen_CR_list, "true CR", "gen CR", k_list, theta_list, **plot_kwargs)
+    plot_kl_div(Y_SR_list, Y_gen_SR_list, "true SR", "gen SR", k_list, theta_list, **plot_kwargs)

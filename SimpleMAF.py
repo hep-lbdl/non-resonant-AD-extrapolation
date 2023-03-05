@@ -10,6 +10,8 @@ from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
 
+from utils import EarlyStopping
+
 from tqdm import tqdm
 
 from nflows.flows.base import Flow
@@ -50,13 +52,13 @@ class SimpleMAF:
                                                                   context_features=num_cond_features, 
                                                                   activation = activation))
         transform = CompositeTransform(transforms)
-        self.flow = Flow(transform, base_dist)
+        self.flow = Flow(transform, base_dist).to(device)
         self.optimizer = optim.Adam(self.flow.parameters())
         self.device = device
 
     def np_to_torch(self, array):
     
-        return torch.tensor(array.astype(np.float32)).to(self.device)
+        return torch.tensor(array.astype(np.float32))
     
     def process_data(self, data, batch_size, cond=None):
         
@@ -80,7 +82,7 @@ class SimpleMAF:
         return train_data, val_data
         
     
-    def train(self, data, cond=None, n_epochs=100, batch_size=512, seed=1, plot=False):
+    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, plot=False, early_stop=True, patience = 5):
         
         update_epochs = 1
         
@@ -90,6 +92,10 @@ class SimpleMAF:
         epochs, epochs_val = [], []
         losses, losses_val = [], []
         
+        if early_stop:
+            early_stopping = EarlyStopping(patience=patience, min_delta=0.00001)
+        
+        
         train_data, val_data = self.process_data(data=data, batch_size=batch_size, cond=cond)
         
         for epoch in tqdm(range(n_epochs), ascii=' >='):
@@ -97,13 +103,14 @@ class SimpleMAF:
             losses_batch_per_e = []
             
             for batch_ndx, data in enumerate(train_data):
+                data = data.to(self.device)
                 if cond is not None:
                     x_ = data[:, :-self.ncond] if self.nfeat != 1 else data[:,0].reshape(-1, 1)
                     c_ = data[:, -self.ncond:] if self.ncond != 1 else data[:,-1].reshape(-1, 1)
+                    loss = -self.flow.log_prob(inputs=x_, context=c_).mean()
                 else:
                     x_ = data
-                    c_ = None
-                loss = -self.flow.log_prob(inputs=x_, context=c_).mean()  
+                    loss = -self.flow.log_prob(inputs=x_).mean()  
                 losses_batch_per_e.append(loss.detach().cpu().numpy())
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -118,6 +125,7 @@ class SimpleMAF:
                     val_losses_batch_per_e = []
 
                     for batch_ndx, data in enumerate(val_data):
+                        data = data.to(self.device)
                         self.optimizer.zero_grad()
                         if cond is not None:
                             x_ = data[:, :-self.ncond] if self.nfeat != 1 else data[:,0].reshape(-1, 1)
@@ -128,13 +136,20 @@ class SimpleMAF:
                         val_loss = -self.flow.log_prob(inputs=x_, context=c_).mean() 
                         val_losses_batch_per_e.append(val_loss.detach().cpu().numpy())
                
-                epochs_val.append(epoch)
-                mean_val_loss = np.mean(val_losses_batch_per_e)
-                losses_val.append(mean_val_loss)
+                    epochs_val.append(epoch)
+                    mean_val_loss = np.mean(val_losses_batch_per_e)
+                    losses_val.append(mean_val_loss)
+                    
+                    if early_stop:
+                        early_stopping(mean_val_loss)
             
-            if plot:
-                print(f"Epoch: {epoch} - loss: {loss} - val loss: {val_loss}")
-            
+                    if plot:
+                        print(f"Epoch: {epoch} - loss: {loss} - val loss: {val_loss}")
+        
+            if early_stop:
+                if early_stopping.early_stop:
+                    break
+        
         if plot:
             plt.plot(losses, epochs, label="loss")
             plt.plot(losses_val, epochs_val, label="val loss")
@@ -143,5 +158,6 @@ class SimpleMAF:
                     
 
     def sample(self, num_samples, cond=None):
+        cond = self.np_to_torch(cond).to(self.device)
         samples = self.flow.sample(num_samples=num_samples, context=cond)
-        return samples.detach().numpy()
+        return samples.detach().cpu().numpy()
