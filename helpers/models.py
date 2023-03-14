@@ -13,7 +13,7 @@ from torch import optim
 
 
 # define the Base Density trainer
-class FlowLIT(pl.LightningModule):
+class FlowLit(pl.LightningModule):
     def __init__(self, dim_features, dim_context, flow_args, lr, wd, base_dist = None):
         super().__init__()
         
@@ -33,7 +33,7 @@ class FlowLIT(pl.LightningModule):
         if base_dist is not None:
             self.base_dist = base_dist
             # set the base flow to be static
-            for param in model.parameters():
+            for param in self.base_dist.parameters():
                 param.requires_grad = False
                 
         else:
@@ -52,6 +52,7 @@ class FlowLIT(pl.LightningModule):
         self.flow = Flow(self.transform, self.base_dist)    
         
         self.save_hyperparameters()
+        
 
     def training_step(self, batch, batch_idx):
         # training_step defines the train loop.
