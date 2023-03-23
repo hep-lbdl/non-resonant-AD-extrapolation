@@ -10,7 +10,7 @@ from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from utils import EarlyStopping
+from helpers.utils import EarlyStopping
 from tqdm import tqdm
 import yaml
 

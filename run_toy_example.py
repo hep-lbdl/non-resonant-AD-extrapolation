@@ -1,9 +1,9 @@
 import argparse
 import numpy as np
 from math import sin, cos, pi
-from SimpleMAF import SimpleMAF
-from Classifier import Classifier
-from plotting import *
+from helpers.SimpleMAF import SimpleMAF
+from helpers.Classifier import Classifier
+from helpers.plotting import plot_kl_div
 import torch
 import os
 
