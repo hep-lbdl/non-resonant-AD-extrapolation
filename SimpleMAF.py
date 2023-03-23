@@ -15,14 +15,14 @@ from utils import EarlyStopping
 from tqdm import tqdm
 
 from nflows.flows.base import Flow
-from nflows.distributions.normal import StandardNormal
+from nflows.distributions.normal import StandardNormal, ConditionalDiagonalNormal
 from nflows.transforms.base import CompositeTransform
 from nflows.transforms.autoregressive import MaskedAffineAutoregressiveTransform
 from nflows.transforms.permutations import ReversePermutation
 
 
 """
-A simple implementation of a Masked Autoregressive Flow (MAF).
+A simple implementation of a Masked Autoregressive Flow (MAF) and a classifier.
 
 Author: Kehang Bai
 Date: Feb 19, 2023
@@ -34,6 +34,8 @@ class SimpleMAF:
                  num_cond_features=None,
                  num_hidden_features=4,
                  num_layers=5,
+                 learning_rate=1e-3,
+                 base='standard_normal',
                  act='relu',
                  device='cpu'):
         
@@ -42,7 +44,13 @@ class SimpleMAF:
         
         self.nfeat = num_features
         self.ncond = num_cond_features
-        base_dist = StandardNormal(shape=[num_features])
+        
+        if base=='standard_normal':
+            base_dist = StandardNormal(shape=[num_features])
+        elif base=='conditioal_normal':
+            base_dist = ConditionalDiagonalNormal(shape=[num_features], context_encoder=nn.Linear(num_cond_features, num_hidden_features))
+        else:
+            base_dist = StandardNormal(shape=[num_features])
 
         transforms = []
         for _ in range(num_layers):
@@ -53,7 +61,7 @@ class SimpleMAF:
                                                                   activation = activation))
         transform = CompositeTransform(transforms)
         self.flow = Flow(transform, base_dist).to(device)
-        self.optimizer = optim.Adam(self.flow.parameters())
+        self.optimizer = optim.Adam(self.flow.parameters(), lr=learning_rate)
         self.device = device
 
     def np_to_torch(self, array):
@@ -74,15 +82,15 @@ class SimpleMAF:
                 cond = cond.reshape(-1, 1)
             data = np.concatenate((data, cond), axis=1)
         
-        x_train, x_test = train_test_split(data, test_size=0.33, shuffle=True)
+        x_train, x_val = train_test_split(data, test_size=0.2, shuffle=True)
         
         train_data = torch.utils.data.DataLoader(self.np_to_torch(x_train), batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
-        val_data = torch.utils.data.DataLoader(self.np_to_torch(x_test), batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
+        val_data = torch.utils.data.DataLoader(self.np_to_torch(x_val), batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
         
         return train_data, val_data
         
     
-    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, plot=False, early_stop=True, patience = 5):
+    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, plot=False, outdir="./", early_stop=True, patience = 5):
         
         update_epochs = 1
         
@@ -143,8 +151,8 @@ class SimpleMAF:
                     if early_stop:
                         early_stopping(mean_val_loss)
             
-                    if plot:
-                        print(f"Epoch: {epoch} - loss: {loss} - val loss: {val_loss}")
+                    # if plot:
+                    #     print(f"Epoch: {epoch} - loss: {loss} - val loss: {val_loss}")
         
             if early_stop:
                 if early_stopping.early_stop:
@@ -155,6 +163,8 @@ class SimpleMAF:
             plt.plot(losses_val, epochs_val, label="val loss")
             plt.legend()
             plt.show
+            plt.savefig(f"{outdir}/MAF_loss.png")
+            plt.close
                     
 
     def sample(self, num_samples, cond=None):

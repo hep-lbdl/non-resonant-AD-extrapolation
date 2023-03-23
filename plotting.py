@@ -66,7 +66,7 @@ def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
 def pi_to_string(theta):
     return f"({str(Fraction(theta/pi))})$\\pi$"
     
-def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, title="Normal($k(cos\\theta\\alpha + sin\\theta\\beta)$, 1)", tag = "", ymin=-6, ymax=10, *args, **kwargs):
+def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, title="Normal($k(cos\\theta\\alpha + sin\\theta\\beta)$, 1)", tag = "", ymin=-6, ymax=10, outdir="plots", *args, **kwargs):
     colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     
     N = len(Y_list)
@@ -93,7 +93,7 @@ def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, title="Normal
         ax1.set_xlabel("y")
         plt.legend(loc='upper left', fontsize = 9)
         plt.show
-        plot_name = f"plots/{Y_label}_{Y_label2}_{tag}.pdf"
+        plot_name = f"{outdir}/{Y_label}_{Y_label2}_{tag}.pdf"
         plt.savefig(plot_name.replace(" ", "_"))
         plt.close
     else:
