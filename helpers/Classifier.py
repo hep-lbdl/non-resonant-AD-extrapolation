@@ -151,12 +151,15 @@ class Classifier():
                     break
                     
         if plot:
-            plt.plot(losses, epochs, label="loss")
-            plt.plot(losses_val, epochs_val, label="val loss")
+            plt.figure(figsize=(6,4))
+            plt.plot(epochs, losses, label="loss")
+            plt.plot(epochs_val, losses_val, label="val loss")
+            plt.xlabel("number of epochs")
+            plt.ylabel("loss")
             plt.legend()
             plt.show
             plt.savefig(f"{outdir}/classfier_loss.png")
-            plt.close
+            plt.close()
         
         if save_model is not None:
             torch.save(self.model, save_model+"_ep"+str(epoch))

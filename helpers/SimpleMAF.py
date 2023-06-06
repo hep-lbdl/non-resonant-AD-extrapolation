@@ -31,11 +31,11 @@ Date: Feb 19, 2023
 class SimpleMAF:
     def __init__(self,
                  num_features,
-                 num_cond_features=None,
+                 num_context=None,
                  num_hidden_features=4,
                  num_layers=5,
                  learning_rate=1e-3,
-                 base='standard_normal',
+                 base_dist=None,
                  act='relu',
                  device='cpu'):
         
@@ -43,24 +43,25 @@ class SimpleMAF:
         activation = activations[act]
         
         self.nfeat = num_features
-        self.ncond = num_cond_features
-        
-        if base=='standard_normal':
-            base_dist = StandardNormal(shape=[num_features])
-        elif base=='conditioal_normal':
-            base_dist = ConditionalDiagonalNormal(shape=[num_features], context_encoder=nn.Linear(num_cond_features, num_hidden_features))
+        self.ncond = num_context
+ 
+        if base_dist is not None:
+            self.base_dist = base_dist
+            # set the base flow to be static
+            for param in self.base_dist.parameters():
+                param.requires_grad = False
         else:
-            base_dist = StandardNormal(shape=[num_features])
+            self.base_dist = StandardNormal(shape=[num_features])
 
         transforms = []
         for _ in range(num_layers):
             transforms.append(ReversePermutation(features=num_features))
             transforms.append(MaskedAffineAutoregressiveTransform(features=num_features, 
                                                                   hidden_features=num_hidden_features, 
-                                                                  context_features=num_cond_features, 
+                                                                  context_features=num_context, 
                                                                   activation = activation))
-        transform = CompositeTransform(transforms)
-        self.flow = Flow(transform, base_dist).to(device)
+        self.transform = CompositeTransform(transforms)
+        self.flow = Flow(self.transform, self.base_dist).to(device)
         self.optimizer = optim.Adam(self.flow.parameters(), lr=learning_rate)
         self.device = device
 

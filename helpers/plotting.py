@@ -95,7 +95,7 @@ def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, title="Normal
         plt.show
         plot_name = f"{outdir}/{Y_label}_{Y_label2}_{tag}.pdf"
         plt.savefig(plot_name.replace(" ", "_"))
-        plt.close
+        plt.close()
     else:
         print("Wrong input lists!")
         
