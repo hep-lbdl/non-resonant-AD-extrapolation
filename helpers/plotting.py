@@ -114,3 +114,24 @@ def plot_results(k_list, theta_list, Y_list, samples_CR_list, samples_SR_list, m
     plot_kl_div(Y_SR_list, Y_CR_list, "true SR", "true CR", k_list, theta_list, **plot_kwargs)
     plot_kl_div(Y_CR_list, Y_gen_CR_list, "true CR", "gen CR", k_list, theta_list, **plot_kwargs)
     plot_kl_div(Y_SR_list, Y_gen_SR_list, "true SR", "gen SR", k_list, theta_list, **plot_kwargs)
+    
+    
+def plot_multi_dist(hists, labels, title="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
+    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    
+    N = len(hists)
+    
+    if N==len(hists) and N==len(labels) and N<=len(colors):
+        bins = np.linspace(ymin, ymax, 50)
+        fig, ax1 = plt.subplots(figsize=(10,6))
+        for i in range(N):
+            ax1.hist(hists[i], bins = bins, density = True, histtype='step', color=colors[i], label=f"{labels[i]}")
+        ax1.set_title(f"{title}", fontsize = 14)
+        ax1.set_xlabel(xlabel)
+        plt.legend(loc='upper left', fontsize = 9)
+        plt.show
+        plot_name = f"{outdir}/{title}.pdf"
+        plt.savefig(plot_name.replace(" ", "_"))
+        plt.close()
+    else:
+        print("Wrong input lists!")

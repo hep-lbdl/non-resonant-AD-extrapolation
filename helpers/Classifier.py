@@ -14,6 +14,8 @@ from helpers.utils import EarlyStopping
 from tqdm import tqdm
 import yaml
 
+import os
+
 
 class Model(nn.Module):
     def __init__(self, 
@@ -52,7 +54,8 @@ class Classifier():
                  layers=[64,64,64], 
                  learning_rate=1e-3, 
                  loss_type="binary_crossentropy", 
-                 device="cpu"):
+                 device="cpu",
+                 outdir="./"):
 
         self.n_inputs = n_inputs
         self.device = device
@@ -65,28 +68,35 @@ class Classifier():
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)        
         
+        os.makedirs(outdir, exist_ok=True)
+        self.outdir = outdir
+        
     def np_to_torch(self, array):
     
         return torch.tensor(array.astype(np.float32))
     
-    def process_data(self, input_x, batch_size):
+    def process_data(self, input_x, input_y, batch_size):
         
-        if self.n_inputs != input_x.ndim-1:
-            raise RuntimeError("input data dimention doesn't match with number of features!")
+        if self.n_inputs != input_x.shape[-1]:
+            raise RuntimeError(f"input data has {input_x.shape[-1]} features, which doesn't match with number of features!")
         
-        input_train, input_val = train_test_split(input_x, test_size=0.2, shuffle=True)
+        x_train, x_val, y_train, y_val = train_test_split(input_x, input_y, test_size=0.33, random_state=42)
         
-        x_train = torch.utils.data.TensorDataset(self.np_to_torch(input_train[:,:-1]),
-            self.np_to_torch(input_train[:,-1]).reshape(-1,1))
-        x_val = torch.utils.data.TensorDataset(self.np_to_torch(input_val[:,:-1]),
-            self.np_to_torch(input_val[:,-1]).reshape(-1,1))
+        x_train = self.np_to_torch(x_train)
+        y_train = self.np_to_torch(y_train).reshape(-1, 1)
         
-        train_data = torch.utils.data.DataLoader(x_train, batch_size=batch_size, shuffle=True, num_workers = 8, pin_memory = True)
-        val_data = torch.utils.data.DataLoader(x_val, batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
+        x_val = self.np_to_torch(x_val)
+        y_val = self.np_to_torch(y_val).reshape(-1, 1)
         
-        return train_data, val_data
+        train_dataset = torch.utils.data.TensorDataset(x_train, y_train)
+        val_dataset = torch.utils.data.TensorDataset(x_val, y_val)
+        
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers = 8, pin_memory = True)
+        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
+        
+        return train_dataloader, val_dataloader
     
-    def train(self, input_x, n_epochs=200, batch_size=512, weights=None, seed=1, plot=False, outdir="./", save_model=None, early_stop=True, patience = 5):
+    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, plot=False, save_model=None, early_stop=True, patience = 5):
         
         update_epochs = 1
         
@@ -99,7 +109,7 @@ class Classifier():
         if early_stop:
             early_stopping = EarlyStopping(patience=patience, min_delta=0.00001)
             
-        train_data, val_data = self.process_data(input_x, batch_size=batch_size)
+        train_data, val_data = self.process_data(input_x, input_y, batch_size=batch_size)
         
         for epoch in tqdm(range(n_epochs), ascii=' >='):
             
@@ -158,13 +168,13 @@ class Classifier():
             plt.ylabel("loss")
             plt.legend()
             plt.show
-            plt.savefig(f"{outdir}/classfier_loss.png")
+            plt.savefig(f"{self.outdir}/classfier_loss.png")
             plt.close()
         
         if save_model is not None:
             torch.save(self.model, save_model+"_ep"+str(epoch))
     
-    def evaluation(self, X_test, y_test=None, outdir='./', plot=True):
+    def evaluation(self, X_test, y_test=None, plot=True):
         
         self.model.eval()
         
@@ -179,17 +189,21 @@ class Classifier():
 
         if plot and y_test is not None:
             fig, ax = plt.subplots(1, 1, figsize=(7, 5))
-            ax.plot(fpr, tpr)
+            ax.plot(fpr, tpr, label=f"AUC: {auc:.3f}")
             ax.set_xlabel("FPR")
             ax.set_ylabel("TPR")
-            ax.set_title("ROC: " + str(auc))
-            fname = f"{outdir}/roc.png"
+            ax.set_title(f"ROC curve")
+            ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
+            fname = f"{self.outdir}/roc.png"
+            ax.legend()
             fig.savefig(fname)
 
-            np.save(f"{outdir}/fpr.npy", fpr)
-            np.save(f"{outdir}/tpr.npy", tpr)
+            np.save(f"{self.outdir}/fpr.npy", fpr)
+            np.save(f"{self.outdir}/tpr.npy", tpr)
 
             if auc < 0.5:
                 auc = 1.0 - auc
 
             print(f"AUC: {auc}.")
+            
+        return outputs
