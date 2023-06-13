@@ -3,10 +3,12 @@ import numpy as np
 from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_kl_div, plot_multi_dist
+from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
 import torch
 import os
 import sys
+import logging
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -29,7 +31,21 @@ parser.add_argument(
     default="outputs",
     help="output directory",
 )
+parser.add_argument(
+    "-v",
+    "--verbose",
+    action="store_true",
+    default=False,
+    help="Verbose enable DEBUG",
+)
 args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO)
+
+log_level = logging.DEBUG if args.verbose else logging.INFO
+    
+log = logging.getLogger("run")
+log.setLevel(log_level)
 
 
 def main():
@@ -70,6 +86,7 @@ def main():
     if args.samples is None:
         
         # train classifer for reweighting
+        log.info("Training a classifer for reweighting...")
         # create labels for classifier
         MC_cond_CR_label = np.zeros(len(MC_cond_CR)).reshape(-1,1)
         data_cond_CR_label = np.ones(len(data_cond_CR)).reshape(-1,1)
@@ -79,41 +96,46 @@ def main():
         input_m_y = np.vstack([MC_cond_CR_label, data_cond_CR_label])
         
         # train reweighting classifier
-        NN_reweight = Classifier(n_inputs=2, layers=[64,128,256,64], learning_rate=1e-3, device=device, outdir=f"{args.outdir}/reweighting")
-        NN_reweight.train(input_m_x, input_m_y, plot=True)
+        NN_reweight = Classifier(n_inputs=2, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/reweighting")
+        NN_reweight.train(input_m_x, input_m_y)
 
         # TODO: properly generate test dataset
         
         # evaluate classifier and calculate the weights
-        w_MC = NN_reweight.evaluation(MC_cond_SR, plot=True)
-        w_MC = w_MC/(1.-w_MC)
-        MC_reweight_cond_SR = w_MC * MC_cond_SR
+        w_MC = NN_reweight.evaluation(MC_cond_SR)
+        w_MC = (w_MC/(1.-w_MC)).flatten()
         
         # plot reweigted distribution
         plot_kwargs = {"title":"Reweighted MC vs data in SR for m1", "xlabel":"m1", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
-        plot_multi_dist([MC_cond_SR[:,0], MC_reweight_cond_SR[:,0], data_cond_SR[:,0]], ["MC", "reweighted MC", "data"], **plot_kwargs)
+        plot_multi_dist([MC_cond_SR[:,0], MC_cond_SR[:,0], data_cond_SR[:,0]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
         
         plot_kwargs = {"title":"Reweighted MC vs data in SR for m2", "xlabel":"m2", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
-        plot_multi_dist([MC_cond_SR[:,1], MC_reweight_cond_SR[:,1], data_cond_SR[:,1]], ["MC", "reweighted MC", "data"], **plot_kwargs)
+        plot_multi_dist([MC_cond_SR[:,1], MC_cond_SR[:,1], data_cond_SR[:,1]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
         
-        sys.exit()
-        
+        # train a NF for density estimation
+        logging.info("Training a MAF to learn P(x|m)...")
         # train MAF with data in CR
         MAF = SimpleMAF(num_features = nfeat, num_context=ncond, device=device)
-        MAF.train(data=data_CR, cond = data_cond_CR, plot=True, outdir=args.outdir)
+        MAF.train(data=data_CR, cond = data_cond_CR, outdir=args.outdir)
         
         # sample from MAF
-        pred_bkg_SR = MAF.sample(1, MC_reweight_cond_SR).flatten()
+        pred_bkg_SR = MAF.sample(1, MC_cond_SR).flatten()
 
         # save generated samples
-        np.savez(f"{args.outdir}/samples_data_SR.npz", samples = pred_bkg_SR)
+        np.savez(f"{args.outdir}/samples_data_SR.npz", samples = pred_bkg_SR, weights = w_MC)
         
     else:
         # load samples
         pred_bkg_SR = np.load(args.samples)["samples"]
-    
-    plot_kwargs = {"tag":"2DSR", "ymin":-15, "ymax":15, "outdir":args.outdir}
+        w_MC = np.load(args.samples)["weights"]
+
+    plot_kwargs = {"tag":"2DSR_unweighted", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
     plot_kl_div([data_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+        
+    plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
+    plot_kl_div([data_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+    
+    log.info("Training a classifer for signal vs background...")
     
     # create labels for classifier
     pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
@@ -122,14 +144,23 @@ def main():
     # create training data set for classifier
     input_x = np.hstack([pred_bkg_SR, data_SR]).reshape(-1, 1)
     input_y = np.hstack([pred_bkg_SR_label, data_SR_label]).reshape(-1, 1)
+
+    w_data = np.array([1.]*len(data_SR))
+    input_weights = np.hstack([w_MC, w_data]).reshape(-1, 1)
     
     # train classifier
-    NN = Classifier(n_inputs=1, device=device, outdir=args.outdir)
-    NN.train(input_x, input_y, plot=True)
+    NN = Classifier(n_inputs=1, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+    NN.train(input_x, input_y, weights=input_weights)
     
     # evaluate classifier
     # TODO: properly generate test dataset
-    output = NN.evaluation(input_x, input_y, plot=True)
+    output = NN.evaluation(input_x, input_y, weights=input_weights)
+    
+    tpr = np.load(f"{args.outdir}/signal_significance/tpr.npy")
+    fpr = np.load(f"{args.outdir}/signal_significance/fpr.npy")
+    plot_SIC(tpr, fpr, "CATHODE style", f"{args.outdir}/signal_significance/")
 
+    log.info("CATHODE style extrapolation done!")
+    
 if __name__ == "__main__":
     main()

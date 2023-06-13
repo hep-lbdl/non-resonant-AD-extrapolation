@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
 
 import torch
 from torch import nn
@@ -20,13 +21,10 @@ from nflows.transforms.base import CompositeTransform
 from nflows.transforms.autoregressive import MaskedAffineAutoregressiveTransform
 from nflows.transforms.permutations import ReversePermutation
 
+log = logging.getLogger("run")
 
-"""
-A simple implementation of a Masked Autoregressive Flow (MAF) and a classifier.
-
-Author: Kehang Bai
-Date: Feb 19, 2023
-"""
+# Turn off matplotlib DEBUG messages
+plt.set_loglevel(level="warning")
 
 class SimpleMAF:
     def __init__(self,
@@ -91,7 +89,7 @@ class SimpleMAF:
         return train_data, val_data
         
     
-    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, plot=False, outdir="./", early_stop=True, patience = 5):
+    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.001):
         
         update_epochs = 1
         
@@ -102,7 +100,7 @@ class SimpleMAF:
         losses, losses_val = [], []
         
         if early_stop:
-            early_stopping = EarlyStopping(patience=patience, min_delta=0.00001)
+            early_stopping = EarlyStopping(patience=patience, min_delta=min_delta)
         
         
         train_data, val_data = self.process_data(data=data, batch_size=batch_size, cond=cond)
@@ -152,20 +150,21 @@ class SimpleMAF:
                     if early_stop:
                         early_stopping(mean_val_loss)
             
-                    # if plot:
-                    #     print(f"Epoch: {epoch} - loss: {loss} - val loss: {val_loss}")
+                    log.debug(f"Epoch: {epoch} - loss: {loss} - val loss: {val_loss}")
         
             if early_stop:
                 if early_stopping.early_stop:
                     break
         
-        if plot:
-            plt.plot(losses, epochs, label="loss")
-            plt.plot(losses_val, epochs_val, label="val loss")
-            plt.legend()
-            plt.show
-            plt.savefig(f"{outdir}/MAF_loss.png")
-            plt.close
+        plt.figure(figsize=(6,4))
+        plt.plot(epochs, losses, label="loss")
+        plt.plot(epochs_val, losses_val, label="val loss")
+        plt.xlabel("number of epochs")
+        plt.ylabel("loss")
+        plt.legend()
+        plt.show
+        plt.savefig(f"{outdir}/MAF_loss.png")
+        plt.close
                     
 
     def sample(self, num_samples, cond=None):
