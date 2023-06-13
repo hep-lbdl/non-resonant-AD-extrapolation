@@ -200,7 +200,7 @@ class Classifier():
         plt.savefig(f"{self.outdir}/classfier_loss.png")
         plt.close()
         
-        if save_model is not None:
+        if save_model:
             torch.save(self.model, f"{self.outdir}_ep_{epoch}")
     
     def evaluation(self, X_test,y_test=None, weights=None):
