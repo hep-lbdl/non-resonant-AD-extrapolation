@@ -100,7 +100,7 @@ def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, weights1=None
             kl_div = get_kl_div(c0,c1)
             ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[i], label=f"kl div={kl_div:.3f}")
         ax1.set_title(f"Background in x = {title}", fontsize = 14)
-        ax1.set_xlabel("y")
+        ax1.set_xlabel("x")
         plt.legend(loc='upper left', fontsize = 9)
         plt.show
         plot_name = f"{outdir}/{Y_label}_{Y_label2}_{tag}.pdf"
@@ -108,7 +108,51 @@ def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, weights1=None
         plt.close()
     else:
         print("Wrong input lists!")
-        
+
+def plot_kl_div_data_reweight(data_train, data_true, data_gen, weights, data_gen_from_truth=None, MC_true=None, name="data_reweight", title="", ymin=-6, ymax=10, outdir="./", *args, **kwargs):
+    
+    # data_train is the data in CR
+    # data_true is the data in SR
+    # data_gen is the predicted data in SR
+    # weights is used to reweight MC to data
+    # 
+    # optional:
+    # MC_true
+    # data_gen_from_truth
+    
+    
+    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    
+    bins = np.linspace(ymin, ymax, 50)
+    fig, ax1 = plt.subplots(figsize=(10,6))
+
+    ax1.hist(data_train, bins = bins, density = True, histtype='step', ls="--", color=colors[0], label=f"data in CR")
+    
+    c0, cbins, _ = ax1.hist(data_true, bins = bins, density = True, histtype='step', color=colors[0], label=f"data in SR (truth bkg)")
+    
+    if MC_true is not None:
+        ax1.hist(MC_true, bins = bins, density = True, histtype='step', color=colors[1], label=f"MC in SR")
+    
+    ax1.hist(data_gen, bins = bins, density = True, histtype='stepfilled', alpha = 0.3, color=colors[1], label=f"no weight pred bkg in SR from MC")
+    
+    c1, cbins, _ = ax1.hist(data_gen, bins = bins, density = True, weights=weights, histtype='stepfilled', alpha = 0, color=colors[0])
+    kl_div = get_kl_div(c0,c1)
+    ax1.hist(data_gen, bins = bins, density = True, weights=weights, histtype='stepfilled', alpha = 0.3, color=colors[0], label=f"pred bkg in SR from MC (kl div from truth = {kl_div:.3f})")
+    
+    if data_gen_from_truth is not None:
+        c2, cbins, _ = ax1.hist(data_gen_from_truth, bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[3])
+        kl_div = get_kl_div(c0,c2)
+        ax1.hist(data_gen_from_truth, bins = bins, density = True, histtype='stepfilled', alpha = 0.3, color=colors[3], label=f"pred bkg in SR from data (kl div from truth = {kl_div:.3f})")
+    
+    ax1.set_title(f"True vs predicted background in SR {title}", fontsize = 14)
+    ax1.set_xlabel("x")
+    plt.legend(loc='upper left', fontsize = 9)
+    plt.show
+    plot_name = f"{outdir}/{name}.pdf"
+    plt.savefig(plot_name.replace(" ", "_"))
+    plt.close()
+  
+    
 def plot_results(k_list, theta_list, Y_list, samples_CR_list, samples_SR_list, mask_CR, mask_SR, plot_kwargs):
     Y_SR_list = []
     Y_CR_list = []
@@ -145,6 +189,31 @@ def plot_multi_dist(hists, labels, weights=None, title="", xlabel="x", ymin=-10,
         plt.legend(loc='upper left', fontsize = 9)
         plt.show
         plot_name = f"{outdir}/{title}.pdf"
+        plt.savefig(plot_name.replace(" ", "_"))
+        plt.close()
+    else:
+        print("Wrong input lists!")
+        
+def plot_multi_data_MC_dist(data_list, MC_list, labels, weights=None, name="data_vs_mc", title="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
+    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    
+    N = len(data_list)
+    
+    if N==len(MC_list) and N==len(labels) and N<=len(colors):
+        bins = np.linspace(ymin, ymax, 50)
+        fig, ax1 = plt.subplots(figsize=(10,6))
+        for i in range(N):
+            if weights is not None:
+                w_i = weights[i]
+            else:
+                w_i = None
+            ax1.hist(data_list[i], bins = bins, density = True, histtype='step', ls= "-", color=colors[i], label=f"data {labels[i]}")
+            ax1.hist(MC_list[i], bins = bins, density = True, weights=w_i, histtype='step', ls= "--", color=colors[i], label=f"MC {labels[i]}")
+        ax1.set_title(f"{title}", fontsize = 14)
+        ax1.set_xlabel(xlabel)
+        plt.legend(loc='upper left', fontsize = 9)
+        plt.show
+        plot_name = f"{outdir}/{name}.pdf"
         plt.savefig(plot_name.replace(" ", "_"))
         plt.close()
     else:
