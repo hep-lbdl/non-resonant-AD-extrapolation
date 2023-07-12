@@ -1,1 +1,12 @@
 plots/
+
+__pycache__/
+helpers/__pycache__/
+helpers/.ipynb_checkpoints/
+
+jupyter.out
+
+lightning_logs/
+checkpoints/
+.ipynb_checkpoints/
+
