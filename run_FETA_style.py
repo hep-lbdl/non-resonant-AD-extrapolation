@@ -3,16 +3,19 @@ import numpy as np
 from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_kl_div
+from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
 import torch
 import os
 import sys
+import logging
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-i",
     "--input",
     action="store",
+    default=None,
     help=".npz file for input training samples and conditional inputs",
 )
 parser.add_argument(
@@ -29,7 +32,21 @@ parser.add_argument(
     default="outputs",
     help="output directory",
 )
+parser.add_argument(
+    "-v",
+    "--verbose",
+    action="store_true",
+    default=False,
+    help="Verbose enable DEBUG",
+)
 args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO)
+
+log_level = logging.DEBUG if args.verbose else logging.INFO
+    
+log = logging.getLogger("run")
+log.setLevel(log_level)
 
 
 def main():
@@ -39,74 +56,125 @@ def main():
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
     
+    os.makedirs(args.outdir, exist_ok=True)
+    
     # load input files
     inputs = np.load(args.input)
+    # data and MC
     data_feature = inputs["data_feature"]
     data_context = inputs["data_context"]
     MC_feature = inputs["MC_feature"]
     MC_context = inputs["MC_context"]
-    mask_CR = inputs["mask_CR"]
-    mask_SR = inputs["mask_SR"]
+    # SR and CR masks
+    data_mask_CR = inputs["data_mask_CR"]
+    data_mask_SR = inputs["data_mask_SR"]
+    MC_mask_CR = inputs["MC_mask_CR"]
+    MC_mask_SR = inputs["MC_mask_SR"]
     inputs.close()
     
-    data_CR = data_feature[mask_CR]
-    data_SR = data_feature[mask_SR]
-    data_cond_CR = data_context[mask_CR]
-    data_cond_SR = data_context[mask_SR]
-    MC_CR = MC_feature[mask_CR]
-    MC_SR = MC_feature[mask_SR]
-    MC_cond_CR = MC_context[mask_CR]
-    MC_cond_SR = MC_context[mask_SR]
-    
+    # Get feature and contexts from data
+    data_feat_CR = data_feature[data_mask_CR]
+    data_feat_SR = data_feature[data_mask_SR]
+    data_cond_CR = data_context[data_mask_CR]
+    data_cond_SR = data_context[data_mask_SR]
+
+    # Get feature and contexts from MC
+    MC_feat_CR = MC_feature[MC_mask_CR]
+    MC_feat_SR = MC_feature[MC_mask_SR]
+    MC_cond_CR = MC_context[MC_mask_CR]
+    MC_cond_SR = MC_context[MC_mask_SR]
+
     # define useful variables
-    nfeat = data_CR.ndim
+    nfeat = data_feat_CR.ndim
     ncond = data_cond_CR.ndim
     num_samples = 1 # can set to higher values
     
+    
     if args.samples is None:
+        
+        # train classifer for reweighting
+        log.info("Training a classifer for reweighting...")
+        
+        # create labels for classifier
+        MC_cond_CR_label = np.zeros(len(MC_cond_CR)).reshape(-1,1)
+        data_cond_CR_label = np.ones(len(data_cond_CR)).reshape(-1,1)
+        
+        # create training data set for classifier
+        input_m_x = np.vstack([MC_cond_CR, data_cond_CR])
+        input_m_y = np.vstack([MC_cond_CR_label, data_cond_CR_label])
+        
+        # train reweighting classifier
+        NN_reweight = Classifier(n_inputs=2, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/reweighting")
+        NN_reweight.train(input_m_x, input_m_y)
+        
+        # TODO: properly generate test dataset
+        
+        # evaluate classifier and calculate the weights
+        w_MC = NN_reweight.evaluation(MC_cond_SR)
+        w_MC = (w_MC/(1.-w_MC)).flatten()
+        
+        # plot reweigted distribution
+        plot_kwargs = {"title":"Reweighted MC vs data in SR for m1", "xlabel":"m1", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
+        plot_multi_dist([MC_cond_SR[:,0], MC_cond_SR[:,0], data_cond_SR[:,0]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
+        
+        plot_kwargs = {"title":"Reweighted MC vs data in SR for m2", "xlabel":"m2", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
+        plot_multi_dist([MC_cond_SR[:,1], MC_cond_SR[:,1], data_cond_SR[:,1]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
+        
         # train base density flow
         base_density_flow = SimpleMAF(num_features = nfeat, num_context=ncond, device=device)
-        base_density_flow.train(data=MC_feature, cond = MC_context, plot=True, outdir=args.outdir)
+        base_density_flow.train(data=MC_feature, cond = MC_context, outdir=args.outdir)
         
         # train trasport flow
         transport_flow = SimpleMAF(num_features = nfeat, num_context=ncond, base_dist=base_density_flow.flow, device=device)
-        transport_flow.train(data=data_CR, cond=data_cond_CR, plot=True, outdir=args.outdir)
+        transport_flow.train(data=data_feat_CR, cond=data_cond_CR, outdir=args.outdir)
         
-        # sample from trasport flow
-        transport_data_SR, _ = transport_flow.flow._transform.inverse(torch.tensor(MC_SR.reshape(-1, 1)).to(device), torch.tensor(MC_cond_SR).to(device))
-        pred_bkg_SR = transport_data_SR.detach().cpu().numpy().flatten()
+        # Transport MC to data using trasport flow
+        transport_data_feat_SR, _ = transport_flow.flow._transform.inverse(torch.tensor(MC_feat_SR.reshape(-1, 1)).to(device), torch.tensor(MC_cond_SR).to(device))
+        pred_bkg_SR = transport_data_feat_SR.detach().cpu().numpy().flatten()
         
         # save generated samples
-        np.savez(f"{args.outdir}/samples_data_SR.npz", samples = pred_bkg_SR)
+        np.savez(f"{args.outdir}/samples_data_feat_SR.npz", samples = pred_bkg_SR, weights = w_MC)
+        
     else:
         # load samples
         pred_bkg_SR = np.load(args.samples)["samples"]
+        w_MC = np.load(args.samples)["weights"]
 
-    print(f"shape of pred_bkg_SR: {pred_bkg_SR.shape}")
-    print(f"shape of data_SR: {data_SR.shape}")
+    plot_kwargs = {"tag":"2DSR_unweighted", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
+    plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+        
+    plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
+    plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
     
-    plot_kwargs = {"tag":"2DSR", "ymin":-15, "ymax":15, "outdir":args.outdir}
-    plot_kl_div([data_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+    log.info("Training a classifer for signal vs background...")
+    
+    
+    # create training data set for classifier
+    input_feat_x = np.hstack([pred_bkg_SR, data_feat_SR]).reshape(-1, 1)
+    input_cond_x = np.vstack([MC_cond_SR, data_cond_SR])
+    input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
     # create labels for classifier
     pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
-    data_SR_label = np.ones(data_SR.shape)
+    data_feat_SR_label = np.ones(data_feat_SR.shape)
+    input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
+
+    w_data = np.array([1.]*len(data_feat_SR))
+    input_weights = np.hstack([w_MC, w_data]).reshape(-1, 1)
     
-    # create training data set for classifier
-    input_bkg = np.stack([pred_bkg_SR, pred_bkg_SR_label], axis=-1)
-    input_data = np.stack([data_SR, data_SR_label], axis=-1)
-    
-    input_x = np.vstack([input_bkg, input_data])
-    
-    # train classifier
-    NN = Classifier(n_inputs=1, device=device)
-    NN.train(input_x, plot=True, outdir=args.outdir)
+    # train classifier for x, m1 and m2
+    NN = Classifier(n_inputs=3, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+    NN.train(input_x, input_y, weights=input_weights)
     
     # evaluate classifier
     # TODO: properly generate test dataset
-    x_test = input_x[:, 0].reshape(-1, 1)
-    y_test = input_x[:, -1].reshape(-1, 1)
-    NN.evaluation(x_test, y_test, outdir=args.outdir, plot=True)
+    output = NN.evaluation(input_x, input_y, weights=input_weights)
+    
+    tpr = np.load(f"{args.outdir}/signal_significance/tpr.npy")
+    fpr = np.load(f"{args.outdir}/signal_significance/fpr.npy")
+    plot_SIC(tpr, fpr, "FETA style", f"{args.outdir}/signal_significance/")
 
+    log.info("FETA style extrapolation done!")
+    
 if __name__ == "__main__":
     main()

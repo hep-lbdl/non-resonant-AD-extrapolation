@@ -72,8 +72,8 @@ def main():
     inputs.close()
 
     # Get feature and contexts from data
-    data_CR = data_feature[data_mask_CR]
-    data_SR = data_feature[data_mask_SR]
+    data_feat_CR = data_feature[data_mask_CR]
+    data_feat_SR = data_feature[data_mask_SR]
     data_cond_CR = data_context[data_mask_CR]
     data_cond_SR = data_context[data_mask_SR]
 
@@ -82,7 +82,7 @@ def main():
     MC_cond_SR = MC_context[MC_mask_SR]
 
     # define useful variables
-    nfeat = data_CR.ndim
+    nfeat = data_feat_CR.ndim
     ncond = data_cond_CR.ndim
     num_samples = 1 # can set to higher values
 
@@ -90,6 +90,7 @@ def main():
         
         # train classifer for reweighting
         log.info("Training a classifer for reweighting...")
+        
         # create labels for classifier
         MC_cond_CR_label = np.zeros(len(MC_cond_CR)).reshape(-1,1)
         data_cond_CR_label = np.ones(len(data_cond_CR)).reshape(-1,1)
@@ -119,14 +120,14 @@ def main():
         logging.info("Training a MAF to learn P(x|m)...")
         # train MAF with data in CR
         MAF = SimpleMAF(num_features = nfeat, num_context=ncond, device=device)
-        MAF.train(data=data_CR, cond = data_cond_CR, outdir=args.outdir)
+        MAF.train(data=data_feat_CR, cond = data_cond_CR, outdir=args.outdir)
         
         # sample from MAF
         pred_bkg_SR = MAF.sample(1, MC_cond_SR).flatten()
         pred_bkg_SR_from_truth = MAF.sample(1, data_cond_SR).flatten()
 
         # save generated samples
-        np.savez(f"{args.outdir}/samples_data_SR.npz", samples = pred_bkg_SR, samples_from_truth = pred_bkg_SR_from_truth, weights = w_MC, data_SR=data_SR)
+        np.savez(f"{args.outdir}/samples_data_feat_SR.npz", samples = pred_bkg_SR, samples_from_truth = pred_bkg_SR_from_truth, weights = w_MC)
         
     else:
         # load samples
@@ -135,28 +136,28 @@ def main():
         w_MC = np.load(args.samples)["weights"]
 
     plot_kwargs = {"tag":"2DSR_unweighted", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-    plot_kl_div([data_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+    plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
         
     plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-    plot_kl_div([data_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+    plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
     
     plot_kwargs = {"tag":"2DSR_from_truth", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-    plot_kl_div([data_SR], [pred_bkg_SR_from_truth], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+    plot_kl_div([data_feat_SR], [pred_bkg_SR_from_truth], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
     
     log.info("Training a classifer for signal vs background...")
     
     
     # create training data set for classifier
-    input_feat_x = np.hstack([pred_bkg_SR, data_SR]).reshape(-1, 1)
+    input_feat_x = np.hstack([pred_bkg_SR, data_feat_SR]).reshape(-1, 1)
     input_cond_x = np.vstack([MC_cond_SR, data_cond_SR])
     input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
     # create labels for classifier
     pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
-    data_SR_label = np.ones(data_SR.shape)
-    input_y = np.hstack([pred_bkg_SR_label, data_SR_label]).reshape(-1, 1)
+    data_feat_SR_label = np.ones(data_feat_SR.shape)
+    input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
 
-    w_data = np.array([1.]*len(data_SR))
+    w_data = np.array([1.]*len(data_feat_SR))
     input_weights = np.hstack([w_MC, w_data]).reshape(-1, 1)
     
     # train classifier for x, m1 and m2

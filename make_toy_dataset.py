@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 from math import sin, cos, pi
-from helpers.plotting import plot_kl_div, plot_multi_dist
+from helpers.plotting import plot_kl_div, plot_multi_data_MC_dist
 import os
 
 # Total number of events
@@ -40,8 +40,6 @@ def main():
     data_mask_CR = np.logical_not((m1 > 1) & (m2 > 1))
     data_mask_SR = ((m1 > 1) & (m2 > 1))
 
-    data_feature = X(0.5, pi/4, m1, m2)
-
     # MC
     MC_m1 = np.random.normal(0, 1.8, N1).astype(dtype=np.float32)
     MC_m2 = np.random.normal(0, 1.8, N1).astype(dtype=np.float32)
@@ -49,23 +47,36 @@ def main():
 
     MC_mask_CR = np.logical_not((MC_m1 > 1) & (MC_m2 > 1))
     MC_mask_SR = ((MC_m1 > 1) & (MC_m2 > 1))
+    
+    k_list = [0, 0.2, 0.5, 0.8, 1, 1.5, 2]
+    data_feature_list = []
+    MC_feature_list = []
+    labels = []
+    
+    num=0
+    for k in k_list:
+    
+        data_feature = X(k, pi/4, m1, m2)
+        MC_feature = X(k, pi/4, MC_m1, MC_m2)
+        
+        data_feature_list.append(data_feature)
+        MC_feature_list.append(MC_feature)
+        labels.append(f"k={k}")
 
-    MC_feature = X(0.5, pi/4, MC_m1, MC_m2)
+        np.savez(f"./{args.outdir}/inputs_k{num}.npz", data_feature=data_feature, data_context=data_context, MC_feature=MC_feature, MC_context=MC_context, data_mask_CR=data_mask_CR, data_mask_SR=data_mask_SR, MC_mask_CR=MC_mask_CR, MC_mask_SR=MC_mask_SR)
+        
+        num = num +1
 
-    print(f"data_feature={data_feature.shape}, data_context={data_context.shape}, MC_feature={MC_feature.shape}, MC_context={MC_context.shape}, data_mask_CR={data_mask_CR.shape}, data_mask_SR={data_mask_SR.shape}, MC_mask_CR={MC_mask_CR.shape}, MC_mask_SR={MC_mask_SR.shape}")
+    # Plot data and MC contexts
+    plot_kwargs = {"name":"data_vs_mc_m1", "title":r"Input context: data $m_1 = N(0,1)$ and MC $m_1 = N(0,1.8)$", "xlabel":r"$m_1$", "ymin":-15, "ymax":15, "outdir":args.outdir}
+    plot_multi_data_MC_dist([m1], [MC_m1], [""], **plot_kwargs)
 
-    np.savez(f"./{args.outdir}/inputs.npz", data_feature=data_feature, data_context=data_context, MC_feature=MC_feature, MC_context=MC_context, data_mask_CR=data_mask_CR, data_mask_SR=data_mask_SR, MC_mask_CR=MC_mask_CR, MC_mask_SR=MC_mask_SR)
+    plot_kwargs = {"name":"data_vs_mc_m2", "title":r"Input context: data $m_2 = N(0,1)$ and MC $m_2 = N(0,1.8)$", "xlabel":r"$m_2$", "ymin":-15, "ymax":15, "outdir":args.outdir}
+    plot_multi_data_MC_dist([m2], [MC_m2], [""], **plot_kwargs)
     
-    print("plotting input data...")
-    
-    plot_kwargs = {"title":"Input context m1", "xlabel":r"$m_1$", "ymin":-15, "ymax":15, "outdir":args.outdir}
-    plot_multi_dist([m1, MC_m1], ["data", "MC"], **plot_kwargs)
-    
-    plot_kwargs = {"title":"Input context m2", "xlabel":r"$m_2$", "ymin":-15, "ymax":15, "outdir":args.outdir}
-    plot_multi_dist([m2, MC_m2], ["data", "MC"], **plot_kwargs)
-    
-    plot_kwargs = {"title":"Input feature x", "xlabel":"x", "ymin":-15, "ymax":15, "outdir":args.outdir}
-    plot_multi_dist([data_feature, MC_feature], ["data", "MC"], **plot_kwargs)
+    # Plot all data and MC features
+    plot_kwargs = {"name":"data_vs_mc_x", "title":f"Input feature x with k={k}", "xlabel":"x", "ymin":-15, "ymax":15, "outdir":args.outdir}
+    plot_multi_data_MC_dist(data_feature_list, MC_feature_list, labels, **plot_kwargs)
 
 if __name__ == "__main__":
     main()

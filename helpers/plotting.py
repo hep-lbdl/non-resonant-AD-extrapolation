@@ -128,7 +128,7 @@ def plot_kl_div_data_reweight(data_train, data_true, data_gen, weights, data_gen
 
     ax1.hist(data_train, bins = bins, density = True, histtype='step', ls="--", color=colors[0], label=f"data in CR")
     
-    c0, cbins, _ = ax1.hist(data_true, bins = bins, density = True, histtype='step', color=colors[0], label=f"data in SR (truth bkg)")
+    c0, cbins, _ = ax1.hist(data_true, bins = bins, density = True, histtype='step', color=colors[0], label=f"data in SR")
     
     if MC_true is not None:
         ax1.hist(MC_true, bins = bins, density = True, histtype='step', color=colors[1], label=f"MC in SR")
@@ -137,12 +137,12 @@ def plot_kl_div_data_reweight(data_train, data_true, data_gen, weights, data_gen
     
     c1, cbins, _ = ax1.hist(data_gen, bins = bins, density = True, weights=weights, histtype='stepfilled', alpha = 0, color=colors[0])
     kl_div = get_kl_div(c0,c1)
-    ax1.hist(data_gen, bins = bins, density = True, weights=weights, histtype='stepfilled', alpha = 0.3, color=colors[0], label=f"pred bkg in SR from MC (kl div from truth = {kl_div:.3f})")
+    ax1.hist(data_gen, bins = bins, density = True, weights=weights, histtype='stepfilled', alpha = 0.3, color=colors[0], label=f"pred bkg in SR from MC (kl div from data = {kl_div:.3f})")
     
     if data_gen_from_truth is not None:
         c2, cbins, _ = ax1.hist(data_gen_from_truth, bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[3])
         kl_div = get_kl_div(c0,c2)
-        ax1.hist(data_gen_from_truth, bins = bins, density = True, histtype='stepfilled', alpha = 0.3, color=colors[3], label=f"pred bkg in SR from data (kl div from truth = {kl_div:.3f})")
+        ax1.hist(data_gen_from_truth, bins = bins, density = True, histtype='stepfilled', alpha = 0.3, color=colors[3], label=f"pred bkg in SR from data (kl div from data = {kl_div:.3f})")
     
     ax1.set_title(f"True vs predicted background in SR {title}", fontsize = 14)
     ax1.set_xlabel("x")
@@ -235,3 +235,55 @@ def plot_SIC(tpr, fpr, label, outdir="./"):
     fname = f"{outdir}/SIC.png"
     ax.legend()
     fig.savefig(fname)
+    
+def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, outdir="./"):
+    
+    label_list = [f"S/B={percent}" for percent in sig_percent_list]
+    max_SIC_list = []
+    
+    fig, ax = plt.subplots(1, 1, figsize=(7, 5))
+    
+    for i in range(len(tpr_list)):
+    
+        tpr = np.array(tpr_list[i])
+        fpr = np.array(fpr_list[i])
+
+        SIC = tpr[fpr>0] / np.sqrt(fpr[fpr>0])
+        max_SIC_list.append(np.max(SIC))
+
+        ax.plot(tpr[fpr>0], SIC, label=f"{label_list[i]}")
+        ax.set_ylabel(r"SIC = $\frac{\rm TPR}{\sqrt{\rm FPR}}$")
+        ax.set_xlabel("Signal Efficiency (TPR)")
+        ax.set_title(f"Significant improvement characteristic")
+        # ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
+    fname = f"{outdir}/SIC_sig_inj.png"
+    ax.legend()
+    fig.savefig(fname)
+
+    
+def plot_max_SIC(sig_percent, max_SIC, label="", outdir="./"):
+    
+    plt.figure(figsize=(7, 5))
+    plt.plot(sig_percent, max_SIC, '-', label=label)  # Line color (default)
+    plt.plot(sig_percent, max_SIC, 'x', color='black')  # Marker color (black)
+    plt.ylabel(r"max SIC")
+    plt.xlabel("S/B")
+    plt.legend()
+    plt.title(f"max SIC per signal significance")
+    plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
+    
+
+def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
+    
+    plt.figure(figsize=(7, 5))
+    
+    for i in range(len(max_SIC_list)):
+    
+        plt.plot(sig_percent, max_SIC_list[i], '-', label=label_list[i])  # Line color (default)
+        plt.plot(sig_percent, max_SIC_list[i], 'x', color='black')  # Marker color (black)
+    
+    plt.ylabel(r"max SIC")
+    plt.xlabel("S/B")
+    plt.legend()
+    plt.title(f"max SIC per signal significance")
+    plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
