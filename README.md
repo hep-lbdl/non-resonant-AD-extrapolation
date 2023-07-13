@@ -1,29 +1,29 @@
-# Background extrapolation for anomaly detection.
+# Background extrapolation for non-resonant anomaly detection.
 
-# Extrapolation methods
+We explore 3 methods:
+- CATHODE + SALAD
+- FETA + SALAD
+- SALAD
 
- - Density estimation with Normalizing Flow
- - Unbinned Rerighting MC $\to$ data
- - ABCD
+There will be a toy example and a physics example.
 
-## Density estimation with Normalizing Flow
+## Code
 
-### Toy example
+`make_toy_dataset`: generates the toy dataset including features, contexts, and masks for CR and SR. The dataset includes both MC and data, background only.
 
-Use variables $\alpha$ and $\beta$ to define SR.
+`make_siginj_toy_dataset`: generates the toy dataset for signal injection test. 
 
-$$
-p(\alpha)=\frac{1}{\sqrt{2 \pi}} e^{-\frac{\alpha^{2}}{2}}
-$$
+`run_CATHODE_style.py`: the script that does training, sampling, and evalution for the CATHODE + SALAD method. Outputs results from the signal/background classifier.
 
-$$
-p(\beta)=\frac{1}{\sqrt{2 \pi}} e^{-\frac{\beta^{2}}{2}}
-$$
+`run_FETA_style.py`: the script that does training, sampling, and evalution for the FETA + SALAD method. Outputs results from the signal/background classifier.
 
-Use variable $y$ which is a function of $\alpha$ and $\beta$ as to do the likelihood fit.
+`make_plots_sig_inj.py`: plot the SIC curve for the signal injection test.
 
-$$
-P(y) = N(k(\sin{\theta}\alpha + \cos{\theta}\beta,) 1),
-$$
+`plot_multi_SIC_max.py`: plot the max SIC vs S/B for different mathods.
 
-where $k$ and $\theta$ can be set to decrease or increases the dependence of $\alpha$ and $\beta$.
+
+## Documentations
+
+git: https://github.com/kehangbai/documentation_bkg_extrapolation_AD
+
+overleaf: https://www.overleaf.com/3782516325xtwhdgfydnkk 
