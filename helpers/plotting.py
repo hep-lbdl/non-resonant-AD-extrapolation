@@ -285,5 +285,5 @@ def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
     plt.ylabel(r"max SIC")
     plt.xlabel("S/B")
     plt.legend()
-    plt.title(f"max SIC per signal significance")
+    plt.title(f"Maximum significance improvement of each method")
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")

@@ -28,9 +28,14 @@ def main():
 
     os.makedirs(args.outdir, exist_ok=True)
     
-    # data
+    # data bkg-only
     m1 = np.random.normal(0, 1, N1).astype(dtype=np.float32)
     m2 = np.random.normal(0, 1, N1).astype(dtype=np.float32)
+    
+    bkg_feature = X(0.5, pi/4, m1, m2, n=N1)
+    bkg_context = np.stack([m1, m2], axis = -1)
+    bkg_mask_CR = np.logical_not((m1 > 1) & (m2 > 1))
+    bkg_mask_SR = ((m1 > 1) & (m2 > 1))
     
     # MC
     MC_m1 = np.random.normal(0, 1.8, N1).astype(dtype=np.float32)
@@ -42,6 +47,8 @@ def main():
     
     MC_feature = X(0.5, pi/4, MC_m1, MC_m2)
     
+
+    # initialize lists
     sig_percent_list = [0, 0.005, 0.010, 0.015, 0.020, 0.030, 0.040, 0.050]
     data_feature_list = []
     MC_feature_list = []
@@ -65,18 +72,30 @@ def main():
             data_m1 = np.hstack([m1, sig_m1])
             data_m2 = np.hstack([m2, sig_m2])
 
+            sig_feature = X(0.5, pi/4, sig_m1, sig_m2, n=N2)
+            sig_context = np.stack([sig_m1, sig_m2], axis = -1)
+            sig_mask_CR = np.logical_not((sig_m1 > 1) & (sig_m2 > 1))
+            sig_mask_SR = ((sig_m1 > 1) & (sig_m2 > 1))
+            
         else:
             
             data_m1 = m1
             data_m2 = m2
+            
+            sig_feature = np.empty((0))
+            sig_context = np.empty((0))
+            sig_mask_CR = np.empty((0))
+            sig_mask_SR = np.empty((0))
         
+        data_feature = X(0.5, pi/4, data_m1, data_m2, n=N1+N2)
         data_context = np.stack([data_m1, data_m2], axis = -1)
         data_mask_CR = np.logical_not((data_m1 > 1) & (data_m2 > 1))
         data_mask_SR = ((data_m1 > 1) & (data_m2 > 1))
-        
+
+
         print(f"s={s}, N1+N2={N1+N2}, m1: {data_m1.shape}, m2: {data_m2.shape}, data_context: {data_context.shape}")
         
-        data_feature = X(0.5, pi/4, data_m1, data_m2, n=N1+N2)
+        np.savez(f"./{args.outdir}/inputs_s{num}.npz", data_feature=data_feature, data_context=data_context, MC_feature=MC_feature, MC_context=MC_context, bkg_feature=bkg_feature, bkg_context=bkg_context, sig_feature = sig_feature, sig_context = sig_context, data_mask_CR=data_mask_CR, data_mask_SR=data_mask_SR, MC_mask_CR=MC_mask_CR, MC_mask_SR=MC_mask_SR, bkg_mask_CR=bkg_mask_CR, bkg_mask_SR=bkg_mask_SR, sig_mask_CR = sig_mask_CR, sig_mask_SR = sig_mask_SR)
         
         data_feature_list.append(data_feature)
         MC_feature_list.append(MC_feature)
@@ -86,8 +105,6 @@ def main():
         MC_cond_m2_list.append(MC_m2)
         
         labels.append(f"percent signal={s}")
-
-        np.savez(f"./{args.outdir}/inputs_s{num}.npz", data_feature=data_feature, data_context=data_context, MC_feature=MC_feature, MC_context=MC_context, data_mask_CR=data_mask_CR, data_mask_SR=data_mask_SR, MC_mask_CR=MC_mask_CR, MC_mask_SR=MC_mask_SR)
         
         num = num +1
 

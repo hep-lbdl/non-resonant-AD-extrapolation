@@ -33,6 +33,13 @@ parser.add_argument(
     help="output directory",
 )
 parser.add_argument(
+    "-k",
+    "--kldiv",
+    action="store_true",
+    default=False,
+    help="Plot kl div",
+)
+parser.add_argument(
     "-v",
     "--verbose",
     action="store_true",
@@ -62,33 +69,35 @@ def main():
     
     num=0
     
+    if args.kldiv:
+        for i in range(len(sig_percent_list)):
+
+            # load input files
+            inputs = np.load(input_files[i])
+            # data and MC
+            data_feature = inputs["data_feature"]
+            data_mask_SR = inputs["data_mask_SR"]
+            data_mask_CR = inputs["data_mask_CR"]
+            MC_feature = inputs["MC_feature"]
+            MC_mask_SR = inputs["MC_mask_SR"]
+            inputs.close()
+
+            data_SR = data_feature[data_mask_SR]
+            data_CR = data_feature[data_mask_CR]
+            MC_SR = MC_feature[MC_mask_SR]
+
+            samples_path = f"{args.input}/run{i}/samples_data_feat_SR.npz"
+            pred_bkg_SR = np.load(samples_path)["samples"]
+            #pred_bkg_SR_from_truth = np.load(samples_path)["samples_from_truth"]
+            w_MC = np.load(samples_path)["weights"]
+
+            title_tag=f"$x=N(0.5(m_1 + m_2), 1)$ with S/B={sig_percent_list[i]}"
+
+            # Plot true data in SR, predicted background in SR, reweighted background in SR, and the training data in CR.
+            plot_kl_div_data_reweight(data_CR, data_SR, pred_bkg_SR, w_MC, name=f"data_reweight_s{i}", title=title_tag, ymin=-8, ymax=16, outdir=args.outdir)
+            #plot_kl_div_data_reweight(data_CR, data_SR, pred_bkg_SR, w_MC, data_gen_from_truth=pred_bkg_SR_from_truth, MC_true=MC_SR, name=f"data_reweight_compare_s{i}", title=title_tag, ymin=-8, ymax=16, outdir=args.outdir)
+        
     for i in range(len(sig_percent_list)):
-        
-        # load input files
-        inputs = np.load(input_files[i])
-        # data and MC
-        data_feature = inputs["data_feature"]
-        data_mask_SR = inputs["data_mask_SR"]
-        data_mask_CR = inputs["data_mask_CR"]
-        MC_feature = inputs["MC_feature"]
-        MC_mask_SR = inputs["MC_mask_SR"]
-        inputs.close()
-
-        data_SR = data_feature[data_mask_SR]
-        data_CR = data_feature[data_mask_CR]
-        MC_SR = MC_feature[MC_mask_SR]
-        
-        samples_path = f"{args.input}/run{i}/samples_data_feat_SR.npz"
-        pred_bkg_SR = np.load(samples_path)["samples"]
-        #pred_bkg_SR_from_truth = np.load(samples_path)["samples_from_truth"]
-        w_MC = np.load(samples_path)["weights"]
-
-        title_tag=f"$x=N(0.5(m_1 + m_2), 1)$ with S/B={sig_percent_list[i]}"
-
-        # Plot true data in SR, predicted background in SR, reweighted background in SR, and the training data in CR.
-        plot_kl_div_data_reweight(data_CR, data_SR, pred_bkg_SR, w_MC, name=f"data_reweight_s{i}", title=title_tag, ymin=-8, ymax=16, outdir=args.outdir)
-        #plot_kl_div_data_reweight(data_CR, data_SR, pred_bkg_SR, w_MC, data_gen_from_truth=pred_bkg_SR_from_truth, MC_true=MC_SR, name=f"data_reweight_compare_s{i}", title=title_tag, ymin=-8, ymax=16, outdir=args.outdir)
-        
         tpr_list.append(np.load(f"{args.input}/run{i}/signal_significance/tpr.npy"))
         fpr_list.append(np.load(f"{args.input}/run{i}/signal_significance/fpr.npy"))
         
