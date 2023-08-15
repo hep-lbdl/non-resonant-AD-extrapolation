@@ -13,13 +13,19 @@ There will be a toy example and a physics example.
 
 `make_siginj_toy_dataset`: generates the toy dataset for signal injection test. 
 
-`run_CATHODE_style.py`: the script that does training, sampling, and evalution for the CATHODE + SALAD method. Outputs results from the signal/background classifier.
+`run_reweighting`: use SALAD to generate weights for the conditional variables.
 
-`run_FETA_style.py`: the script that does training, sampling, and evalution for the FETA + SALAD method. Outputs results from the signal/background classifier.
+`run_CATHODE.py`: train and sample from a CATHODE style background estimator and a weakly-supervised signal/background classifier.
 
-`run_idealAD.py`: the script trains an idealized AD: data (labeled 1) vs true background (labeled 0).
+`run_FETA.py`: train and sample from a FETA style background estimator and a weakly-supervised signal/background classifier.
 
-`run_FETA_style.py`: the script trains an fully supervised network: signal (labeled 1) vs true background (labeled 0).
+`run_SALAD.py`: use SALAD to estimate background in features and conditional variables, and train a weakly-supervised signal/background classifier.
+
+`run_idealAD.py`: train an idealized AD: data (labeled 1) vs true background (labeled 0).
+
+`run_supervised.py`: train a fully supervised network: signal (labeled 1) vs true background (labeled 0).
+
+`run_evaluate.py`: evaluate the weakly-supervised signal/background classifier with any of teh methode above, and output plots for SIC at different S/B.
 
 `make_plots_sig_inj.py`: plot the SIC curve for the signal injection test.
 
