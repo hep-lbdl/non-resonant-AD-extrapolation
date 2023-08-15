@@ -196,6 +196,7 @@ def plot_multi_dist(hists, labels, weights=None, title="", xlabel="x", ymin=-10,
         
 def plot_multi_data_MC_dist(data_list, MC_list, labels, weights=None, name="data_vs_mc", title="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
     colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    colors = colors + colors
     
     N = len(data_list)
     
@@ -236,9 +237,9 @@ def plot_SIC(tpr, fpr, label, outdir="./"):
     ax.legend()
     fig.savefig(fname)
     
-def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, outdir="./"):
+def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, name="", outdir="./"):
     
-    label_list = [f"S/B={percent}" for percent in sig_percent_list]
+    label_list = [f"S/B={percent*100:.3f}%" for percent in sig_percent_list]
     max_SIC_list = []
     
     fig, ax = plt.subplots(1, 1, figsize=(7, 5))
@@ -254,7 +255,7 @@ def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, outdir="./"):
         ax.plot(tpr[fpr>0], SIC, label=f"{label_list[i]}")
         ax.set_ylabel(r"SIC = $\frac{\rm TPR}{\sqrt{\rm FPR}}$")
         ax.set_xlabel("Signal Efficiency (TPR)")
-        ax.set_title(f"Significant improvement characteristic")
+        ax.set_title(f"Significant improvement characteristic {name}")
         # ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
     fname = f"{outdir}/SIC_sig_inj.png"
     ax.legend()
@@ -263,17 +264,22 @@ def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, outdir="./"):
     
 def plot_max_SIC(sig_percent, max_SIC, label="", outdir="./"):
     
+    sig_percent = np.array(sig_percent)*100
+    
     plt.figure(figsize=(7, 5))
     plt.plot(sig_percent, max_SIC, '-', label=label)  # Line color (default)
     plt.plot(sig_percent, max_SIC, 'x', color='black')  # Marker color (black)
+    plt.xscale('log')
     plt.ylabel(r"max SIC")
-    plt.xlabel("S/B")
+    plt.xlabel("S/B (%)")
     plt.legend()
     plt.title(f"max SIC per signal significance")
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
     
 
 def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
+    
+    sig_percent = np.array(sig_percent)*100
     
     plt.figure(figsize=(7, 5))
     
@@ -282,8 +288,9 @@ def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
         plt.plot(sig_percent, max_SIC_list[i], '-', label=label_list[i])  # Line color (default)
         plt.plot(sig_percent, max_SIC_list[i], 'x', color='black')  # Marker color (black)
     
+    plt.xscale('log')
     plt.ylabel(r"max SIC")
-    plt.xlabel("S/B")
+    plt.xlabel("S/B (%)")
     plt.legend()
     plt.title(f"Maximum significance improvement of each method")
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")

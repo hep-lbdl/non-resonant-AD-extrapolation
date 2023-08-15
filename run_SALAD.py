@@ -4,6 +4,7 @@ from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
 from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
+from sklearn.model_selection import train_test_split
 import torch
 import os
 import sys
@@ -144,9 +145,6 @@ def main():
 #     plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
 #     plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
     
-#     plot_kwargs = {"tag":"2DSR_from_truth", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-#     plot_kl_div([data_feat_SR], [pred_bkg_SR_from_truth], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
-    
     log.info("Training a classifer for signal vs background...")
     
     # create training data set for classifier
@@ -164,15 +162,7 @@ def main():
     
     # train classifier for x, m1 and m2
     NN = Classifier(n_inputs=nfeat + ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x_train_SR, input_y_train_SR, weights=input_weights)
-    
-    # evaluate classifier
-    # TODO: properly generate test dataset
-    output = NN.evaluation(input_x_train_SR, input_y_train_SR, weights=input_weights)
-    
-    tpr = np.load(f"{args.outdir}/signal_significance/tpr.npy")
-    fpr = np.load(f"{args.outdir}/signal_significance/fpr.npy")
-    plot_SIC(tpr, fpr, "SALAD", f"{args.outdir}/signal_significance/")
+    NN.train(input_x_train_SR, input_y_train_SR, weights=input_weights, save_model=True)
 
     log.info("SALAD extrapolation done!")
     

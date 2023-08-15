@@ -19,6 +19,12 @@ parser.add_argument(
     help="Input directory",
 )
 parser.add_argument(
+    "-r",
+    "--rundir",
+    action="store",
+    help="Run directory",
+)
+parser.add_argument(
     "-n",
     "--name",
     action="store",
@@ -60,17 +66,25 @@ def main():
     
     os.makedirs(args.outdir, exist_ok=True)
     
-    sig_percent_list = [0, 0.005, 0.010, 0.015, 0.020, 0.030, 0.040, 0.050]
+    all_files = glob.glob(f"{args.input}/inputs_s*.npz")
+    n_files = len(all_files)
     
-    input_files = [f"{args.input}/inputs_s{i}.npz" for i in range(len(sig_percent_list))]
+    input_files = [f"{args.input}/inputs_s{i}.npz" for i in range(n_files)]
     
     tpr_list = []
     fpr_list = []
+    sig_percent_list = []
     
-    num=0
+    for i in range(n_files):
+        tpr_list.append(np.load(f"{args.rundir}/run{i}/signal_significance/tpr.npy"))
+        fpr_list.append(np.load(f"{args.rundir}/run{i}/signal_significance/fpr.npy"))
+        inputs = np.load(input_files[i])
+        sig_percent_list.append(inputs["sig_percent"].item())
+        inputs.close()
+        
     
     if args.kldiv:
-        for i in range(len(sig_percent_list)):
+        for i in range(n_files):
 
             # load input files
             inputs = np.load(input_files[i])
@@ -95,18 +109,13 @@ def main():
 
             # Plot true data in SR, predicted background in SR, reweighted background in SR, and the training data in CR.
             plot_kl_div_data_reweight(data_CR, data_SR, pred_bkg_SR, w_MC, name=f"data_reweight_s{i}", title=title_tag, ymin=-8, ymax=16, outdir=args.outdir)
-            #plot_kl_div_data_reweight(data_CR, data_SR, pred_bkg_SR, w_MC, data_gen_from_truth=pred_bkg_SR_from_truth, MC_true=MC_SR, name=f"data_reweight_compare_s{i}", title=title_tag, ymin=-8, ymax=16, outdir=args.outdir)
-        
-    for i in range(len(sig_percent_list)):
-        tpr_list.append(np.load(f"{args.input}/run{i}/signal_significance/tpr.npy"))
-        fpr_list.append(np.load(f"{args.input}/run{i}/signal_significance/fpr.npy"))
         
     
-    plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, f"{args.outdir}")
+    plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, name=f"{args.name}", outdir=f"{args.outdir}")
     
     max_SIC_list = [np.max(tpr[fpr > 0] / np.sqrt(fpr[fpr > 0])) for tpr, fpr in zip(tpr_list, fpr_list)]
     
-    plot_max_SIC(sig_percent_list, max_SIC_list, f"{args.name}", f"{args.outdir}")
+    plot_max_SIC(sig_percent_list, max_SIC_list, label=f"{args.name}", outdir=f"{args.outdir}")
     
     # save SICs
     np.savez(f"{args.outdir}/max_SIC_{args.name}.npz", sig_percent=sig_percent_list, max_SIC=max_SIC_list)

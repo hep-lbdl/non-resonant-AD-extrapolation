@@ -4,6 +4,8 @@ from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
 from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
+from helpers.utils import equalize_weights
+from sklearn.model_selection import train_test_split
 import torch
 import os
 import sys
@@ -60,60 +62,51 @@ def main():
         
     # load input files
     inputs = np.load(args.input)
-    # data and bkg
-    data_feature = inputs["data_feature"]
-    data_context = inputs["data_context"]
+    # sig and bkg
+    sig_feature = inputs["sig_feature"]
+    sig_context = inputs["sig_context"]
     bkg_feature = inputs["bkg_feature"]
     bkg_context = inputs["bkg_context"]
+
     # SR and CR masks
-    data_mask_CR = inputs["data_mask_CR"]
-    data_mask_SR = inputs["data_mask_SR"]
-    bkg_mask_CR = inputs["bkg_mask_CR"]
+    sig_mask_SR = inputs["sig_mask_SR"]
     bkg_mask_SR = inputs["bkg_mask_SR"]
     inputs.close()
 
     # Get feature and contexts from data
-    data_feat_CR = data_feature[data_mask_CR]
-    data_feat_SR = data_feature[data_mask_SR]
-    data_cond_CR = data_context[data_mask_CR]
-    data_cond_SR = data_context[data_mask_SR]
+    sig_feat_SR = sig_feature[sig_mask_SR]
+    sig_cond_SR = sig_context[sig_mask_SR]
     
     # Get feature and contexts from bkg-only data
-    bkg_feat_CR = bkg_feature[bkg_mask_CR]
     bkg_feat_SR = bkg_feature[bkg_mask_SR]
-    bkg_cond_CR = bkg_context[bkg_mask_CR]
     bkg_cond_SR = bkg_context[bkg_mask_SR]
 
     # define useful variables
-    nfeat = data_feat_CR.ndim
-    ncond = data_cond_CR.ndim
-    num_samples = 1 # can set to higher values
+    nfeat = sig_feat_SR.ndim
+    ncond = sig_cond_SR.ndim
 
     pred_bkg_SR = bkg_feat_SR.flatten()
     
     log.info("Training a classifer for signal vs background...")
     
     # create training data set for classifier
-    input_feat_x = np.hstack([pred_bkg_SR, data_feat_SR]).reshape(-1, 1)
-    input_cond_x = np.vstack([bkg_cond_SR, data_cond_SR])
+    input_feat_x = np.hstack([pred_bkg_SR, sig_feat_SR]).reshape(-1, 1)
+    input_cond_x = np.vstack([bkg_cond_SR, sig_cond_SR])
     input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
     # create labels for classifier
     pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
-    data_feat_SR_label = np.ones(data_feat_SR.shape)
-    input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
+    sig_feat_SR_label = np.ones(sig_feat_SR.shape)
+    input_y = np.hstack([pred_bkg_SR_label, sig_feat_SR_label]).reshape(-1, 1)
+    
+    # generate weights
+    w_bkg = np.array([1.]*len(pred_bkg_SR))
+    w_sig = np.array([1.]*len(sig_feat_SR))
+    input_weights = np.hstack([w_bkg, w_sig]).reshape(-1, 1)
     
     # train classifier for x, m1 and m2
-    NN = Classifier(n_inputs=3, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y)
-    
-    # evaluate classifier
-    # TODO: properly generate test dataset
-    output = NN.evaluation(input_x, input_y)
-    
-    tpr = np.load(f"{args.outdir}/signal_significance/tpr.npy")
-    fpr = np.load(f"{args.outdir}/signal_significance/fpr.npy")
-    plot_SIC(tpr, fpr, "fully supervised", f"{args.outdir}/signal_significance/")
+    NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+    NN.train(input_x, input_y, weights=input_weights, min_delta=0.002, save_model=True)
 
     log.info("Fully supervised learning done!")
     

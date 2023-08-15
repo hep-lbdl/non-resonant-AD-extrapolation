@@ -1,10 +1,33 @@
+import numpy as np
+import torch
+import logging
+
+log = logging.getLogger("run")
+
+
+def equalize_weights(y_train, y_val, weights_train, weights_val):
+
+    class_weights_train = (weights_train[y_train == 0].sum(), weights_train[y_train == 1].sum())
+
+    for i in range(len(class_weights_train)):
+        weights_train[y_train == i] *= (
+            max(class_weights_train) / class_weights_train[i]
+        )  # equalize number of background and signal event
+
+        weights_val[y_val == i] *= (
+            max(class_weights_train) / class_weights_train[i]
+        )  # likewise for validation set
+
+    log.debug(f"class_weights_train for (bkg, data): {class_weights_train}")
+    log.debug(f"Equalized total weights_train (bkg, data): {weights_train[y_train == 0].sum()}, {weights_train[y_train == 1].sum()}")
+    log.debug(f"Equalized total weights_val (bkg, data): {weights_val[y_val == 0].sum()}, {weights_val[y_val == 1].sum()}")
+
+    return weights_train, weights_val
+
 
 """
 Code adapted from https://debuggercafe.com/using-learning-rate-scheduler-and-early-stopping-with-pytorch/
 """
-
-import torch
-import logging
 
 class LRScheduler():
     """

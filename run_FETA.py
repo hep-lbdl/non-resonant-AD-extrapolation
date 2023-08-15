@@ -4,6 +4,8 @@ from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
 from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
+from helpers.utils import equalize_weights
+from sklearn.model_selection import train_test_split
 import torch
 import os
 import sys
@@ -19,6 +21,13 @@ parser.add_argument(
     help=".npz file for input training samples and conditional inputs",
 )
 parser.add_argument(
+    '-w', 
+    "--weights",
+    action="store",
+    default="reweighting_run/weights.npz",
+    help='Load weights.'
+)
+parser.add_argument(
     '-s', 
     "--samples",
     action="store",
@@ -26,10 +35,17 @@ parser.add_argument(
     help='Directly load generated samples.'
 )
 parser.add_argument(
+    '-m', 
+    "--model",
+    action="store",
+    default=None,
+    help='Load trained MAF model from path.'
+)
+parser.add_argument(
     "-o",
     "--outdir",
     action="store",
-    default="outputs",
+    default="FETA_run",
     help="output directory",
 )
 parser.add_argument(
@@ -92,69 +108,55 @@ def main():
     
     if args.samples is None:
         
-        # train classifer for reweighting
-        log.info("Training a classifer for reweighting...")
+        if args.model is None:
+            # Train base density flow.
+            logging.info("Training a base density flow to learn P_MC(x|m)...")
+            base_density_flow = SimpleMAF(num_features = nfeat, num_context=ncond, device=device)
+            base_density_flow.train(data=MC_feature, cond = MC_context, outdir=args.outdir)
+
+            # Train trasport flow.
+            logging.info("Training a transport flow to map P_MC(x|m) to P_data(x|m)...")
+            transport_flow = SimpleMAF(num_features = nfeat, num_context=ncond, base_dist=base_density_flow.flow, device=device)
+            transport_flow.train(data=data_feat_CR, cond=data_cond_CR, outdir=args.outdir, save_model=True)
         
-        # create labels for classifier
-        MC_cond_CR_label = np.zeros(len(MC_cond_CR)).reshape(-1,1)
-        data_cond_CR_label = np.ones(len(data_cond_CR)).reshape(-1,1)
+        else:
+            # Load the trained model
+            logging.info("Loading a trained MAF transport_flow...")
+            transport_flow = torch.load(f"{args.model}")
+            transport_flow.to(device)
         
-        # create training data set for classifier
-        input_m_x = np.vstack([MC_cond_CR, data_cond_CR])
-        input_m_y = np.vstack([MC_cond_CR_label, data_cond_CR_label])
-        
-        # train reweighting classifier
-        NN_reweight = Classifier(n_inputs=2, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/reweighting")
-        NN_reweight.train(input_m_x, input_m_y)
-        
-        # TODO: properly generate test dataset
-        
-        # evaluate classifier and calculate the weights
-        w_MC = NN_reweight.evaluation(MC_cond_SR)
-        w_MC = (w_MC/(1.-w_MC)).flatten()
-        
-        # plot reweigted distribution
-        plot_kwargs = {"title":"Reweighted MC vs data in SR for m1", "xlabel":"m1", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
-        plot_multi_dist([MC_cond_SR[:,0], MC_cond_SR[:,0], data_cond_SR[:,0]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
-        
-        plot_kwargs = {"title":"Reweighted MC vs data in SR for m2", "xlabel":"m2", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
-        plot_multi_dist([MC_cond_SR[:,1], MC_cond_SR[:,1], data_cond_SR[:,1]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
-        
-        # train base density flow
-        base_density_flow = SimpleMAF(num_features = nfeat, num_context=ncond, device=device)
-        base_density_flow.train(data=MC_feature, cond = MC_context, outdir=args.outdir)
-        
-        # train trasport flow
-        transport_flow = SimpleMAF(num_features = nfeat, num_context=ncond, base_dist=base_density_flow.flow, device=device)
-        transport_flow.train(data=data_feat_CR, cond=data_cond_CR, outdir=args.outdir)
-        
-        # Transport MC to data using trasport flow
+        # Transport MC to data using trasport flow.
         transport_data_feat_SR, _ = transport_flow.flow._transform.inverse(torch.tensor(MC_feat_SR.reshape(-1, 1)).to(device), torch.tensor(MC_cond_SR).to(device))
         pred_bkg_SR = transport_data_feat_SR.detach().cpu().numpy().flatten()
         
-        # save generated samples
-        np.savez(f"{args.outdir}/samples_data_feat_SR.npz", samples = pred_bkg_SR, weights = w_MC)
+        # Save generated samples.
+        np.savez(f"{args.outdir}/samples_data_feat_SR.npz", samples = pred_bkg_SR)
         
     else:
-        # load samples
+        # Load samples.
         pred_bkg_SR = np.load(args.samples)["samples"]
-        w_MC = np.load(args.samples)["weights"]
 
+        
+    # Load weights    
+    w_MC = np.load(args.weights)["weights"]
+    
+    # Make validation plots.
     plot_kwargs = {"tag":"2DSR_unweighted", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
     plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
         
     plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
     plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
     
+    
     log.info("Training a classifer for signal vs background...")
     
     
-    # create training data set for classifier
+    # Create training data set for the classifier.
     input_feat_x = np.hstack([pred_bkg_SR, data_feat_SR]).reshape(-1, 1)
     input_cond_x = np.vstack([MC_cond_SR, data_cond_SR])
     input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
-    # create labels for classifier
+    # Create labels for the classifier.
     pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
     data_feat_SR_label = np.ones(data_feat_SR.shape)
     input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
@@ -162,18 +164,11 @@ def main():
     w_data = np.array([1.]*len(data_feat_SR))
     input_weights = np.hstack([w_MC, w_data]).reshape(-1, 1)
     
-    # train classifier for x, m1 and m2
-    NN = Classifier(n_inputs=3, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, weights=input_weights)
-    
-    # evaluate classifier
-    # TODO: properly generate test dataset
-    output = NN.evaluation(input_x, input_y, weights=input_weights)
-    
-    tpr = np.load(f"{args.outdir}/signal_significance/tpr.npy")
-    fpr = np.load(f"{args.outdir}/signal_significance/fpr.npy")
-    plot_SIC(tpr, fpr, "FETA style", f"{args.outdir}/signal_significance/")
+    # Train a classifier for x, m1 and m2.
+    NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+    NN.train(input_x, input_y, weights=input_weights, save_model=True)
 
+    
     log.info("FETA style extrapolation done!")
     
 if __name__ == "__main__":

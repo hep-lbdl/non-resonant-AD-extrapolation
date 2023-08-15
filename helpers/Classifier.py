@@ -10,7 +10,7 @@ from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from helpers.utils import EarlyStopping
+from helpers.utils import EarlyStopping, equalize_weights
 from tqdm import tqdm
 import yaml
 
@@ -76,6 +76,9 @@ class Classifier():
         os.makedirs(outdir, exist_ok=True)
         self.outdir = outdir
         
+    def to(self, device):
+        self.model.to(device)
+    
     def np_to_torch(self, array):
     
         return torch.tensor(array.astype(np.float32))
@@ -87,6 +90,9 @@ class Classifier():
         
         if weights is not None:
             x_train, x_val, w_train, w_val, y_train, y_val = train_test_split(input_x, weights, input_y, test_size=0.33, random_state=42)
+            
+            w_train, w_val = equalize_weights(y_train, y_val, w_train, w_val)
+            
             w_train = self.np_to_torch(w_train)
             w_val = self.np_to_torch(w_val)
         else:
@@ -110,7 +116,7 @@ class Classifier():
         
         return train_dataloader, val_dataloader
     
-    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, early_stop=True, patience=5, min_delta=0.001, save_model=False):
+    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, early_stop=True, patience=5, min_delta=0.0002, save_model=False):
         
         update_epochs = 1
         
@@ -201,7 +207,9 @@ class Classifier():
         plt.close()
         
         if save_model:
-            torch.save(self.model, f"{self.outdir}_ep_{epoch}")
+            model_path = f"{self.outdir}/trained_AD_classifier.pt"
+            torch.save(self, model_path)
+            log.info(f"Train classifier save at {model_path}")
     
     def evaluation(self, X_test,y_test=None, weights=None):
         

@@ -55,7 +55,7 @@ def main():
         print(f"Files loaded! Input contains {name_list}.")
     
     
-    sig_percent = [0, 0.005, 0.010, 0.015, 0.020, 0.030, 0.040, 0.050]
+    sig_percent = np.logspace(np.log10(0.001),np.log10(0.05),10).round(4)
     
     max_SIC_list = [np.load(f)["max_SIC"] for f in input_files]
     

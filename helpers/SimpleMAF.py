@@ -63,6 +63,12 @@ class SimpleMAF:
         self.optimizer = optim.Adam(self.flow.parameters(), lr=learning_rate)
         self.device = device
 
+    def get_device(self):
+        return next(self.flow.parameters()).device
+
+    def to(self, device):
+        self.flow.to(device)
+        
     def np_to_torch(self, array):
     
         return torch.tensor(array.astype(np.float32))
@@ -89,7 +95,7 @@ class SimpleMAF:
         return train_data, val_data
         
     
-    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.001):
+    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.005, save_model=False):
         
         update_epochs = 1
         
@@ -156,6 +162,13 @@ class SimpleMAF:
                 if early_stopping.early_stop:
                     break
         
+        if save_model:
+
+            model_path = f"{outdir}/MAF_final_model.pt"
+            torch.save(self, model_path)
+
+            log.info(f"The trained MAF model is saved at {model_path}.")
+
         plt.figure(figsize=(6,4))
         plt.plot(epochs, losses, label="loss")
         plt.plot(epochs_val, losses_val, label="val loss")
