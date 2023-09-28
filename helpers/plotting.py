@@ -170,8 +170,10 @@ def plot_results(k_list, theta_list, Y_list, samples_CR_list, samples_SR_list, m
     plot_kl_div(Y_SR_list, Y_gen_SR_list, "true SR", "gen SR", k_list, theta_list, **plot_kwargs)
     
     
-def plot_multi_dist(hists, labels, weights=None, title="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
+def plot_multi_dist(hists, labels, weights=None, htype=None, lstyle=None, title="", name="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
     colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    alphas = [1, 0.2, 1, 1, 0.3, 1, 1, 1]
+    # colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     
     N = len(hists)
     
@@ -179,16 +181,18 @@ def plot_multi_dist(hists, labels, weights=None, title="", xlabel="x", ymin=-10,
         bins = np.linspace(ymin, ymax, 50)
         fig, ax1 = plt.subplots(figsize=(10,6))
         for i in range(N):
-            if weights is not None:
-                w_i = weights[i]
-            else:
-                w_i = None
-            ax1.hist(hists[i], bins = bins, density = True, weights=w_i, histtype='step', color=colors[i], label=f"{labels[i]}")
+            
+            w_i = weights[i] if weights is not None else None
+            ht_i = htype[i] if htype is not None else 'step'
+            ls_i = lstyle[i] if lstyle is not None else '-'
+                
+            ax1.hist(hists[i], bins = bins, density = True, weights=w_i, histtype=ht_i, ls=ls_i, alpha=alphas[i], color=colors[i], label=f"{labels[i]}")
+            
         ax1.set_title(f"{title}", fontsize = 14)
         ax1.set_xlabel(xlabel)
         plt.legend(loc='upper left', fontsize = 9)
         plt.show
-        plot_name = f"{outdir}/{title}.pdf"
+        plot_name = f"{outdir}/{name}.pdf"
         plt.savefig(plot_name.replace(" ", "_"))
         plt.close()
     else:
@@ -210,6 +214,33 @@ def plot_multi_data_MC_dist(data_list, MC_list, labels, weights=None, name="data
                 w_i = None
             ax1.hist(data_list[i], bins = bins, density = True, histtype='step', ls= "-", color=colors[i], label=f"data {labels[i]}")
             ax1.hist(MC_list[i], bins = bins, density = True, weights=w_i, histtype='step', ls= "--", color=colors[i], label=f"MC {labels[i]}")
+        ax1.set_title(f"{title}", fontsize = 14)
+        ax1.set_xlabel(xlabel)
+        plt.legend(loc='upper left', fontsize = 9)
+        plt.show
+        plot_name = f"{outdir}/{name}.pdf"
+        plt.savefig(plot_name.replace(" ", "_"))
+        plt.close()
+    else:
+        print("Wrong input lists!")
+        
+        
+def plot_sig_bkg_dist(sig_list, bkg_hist, labels, name="sig_vs_bkg", title="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
+    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    colors = colors + colors
+    
+    N = len(sig_list)
+    
+    if N==len(labels) and N<=len(colors):
+        bins = np.linspace(ymin, ymax, 50)
+        fig, ax1 = plt.subplots(figsize=(10,6))
+        
+        ax1.hist(bkg_hist, bins = bins, density = True, histtype='step', ls= "--", color=colors[-1], label=f"Bkg")
+        
+        for i in range(N):
+            ax1.hist(sig_list[i], bins = bins, density = True, histtype='step', ls= "-", color=colors[i], label=f"sig {labels[i]}")
+        
+        ax1.axvline(x=1, color='red', linestyle='--', label=f'{xlabel}=1')
         ax1.set_title(f"{title}", fontsize = 14)
         ax1.set_xlabel(xlabel)
         plt.legend(loc='upper left', fontsize = 9)
@@ -294,3 +325,23 @@ def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
     plt.legend()
     plt.title(f"Maximum significance improvement of each method")
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
+    
+
+def plot_avg_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./", title="Maximum significance improvement", tag=""):
+    
+    sig_percent = np.array(sig_percent)*100
+    
+    plt.figure(figsize=(7, 5))
+    
+    for i in range(len(max_SIC_list)):
+    
+        plt.plot(sig_percent, max_SIC_list[i], '-', label=label_list[i])  # Line color (default)
+        plt.plot(sig_percent, max_SIC_list[i], 'x', color='black')  # Marker color (black)
+    
+    plt.xscale('log')
+    plt.ylabel(r"max SIC")
+    plt.xlabel("S/B (%)")
+    plt.legend()
+    plt.title(f"{title}")
+    plt.savefig(f"{outdir}/avg_maxSIC{tag}.png")
+    

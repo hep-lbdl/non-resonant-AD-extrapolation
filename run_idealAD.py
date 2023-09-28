@@ -105,8 +105,8 @@ def main():
     input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
 
     # train classifier for x, m1 and m2
-    NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, save_model=True)
+    NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+    NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512)
     
 
     log.info("Ideal AD done!")

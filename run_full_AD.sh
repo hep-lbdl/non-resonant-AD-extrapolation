@@ -14,8 +14,8 @@ num=0
 for file_path in "${directory}/inputs_s"*.npz; do
     file_name=$(basename "$file_path")
     echo "$file_name"
-    
-    python "run_reweighting.py" -i "${directory}/${file_name}"  -o "${directory}/reweighting/run${num}" -s
+
+    python "run_${option_name}.py" -i "${directory}/${file_name}"  -o "${directory}/${option_name}/run${num}"
     ((num++))
 
 done
@@ -23,6 +23,7 @@ done
 ####################
 # run extrapoation #
 ####################
+
 
 for option_name in "${options[@]}"; do
     
@@ -33,10 +34,10 @@ for option_name in "${options[@]}"; do
         echo "$file_name"
         
         if [ "${option_name}" != "CATHODE" ] && [ "${option_name}" != "FETA" ]; then
-            python "run_${option_name}.py" -i "${directory}/${file_name}"  -o "${directory}/${option_name}/run${num}" &
+            python "run_${option_name}.py" -i "${directory}/${file_name}"  -o "${directory}/${option_name}/run${num}"
             ((num++))
         else
-            python "run_${option_name}.py" -i "${directory}/${file_name}"  -w "${directory}/reweighting/run${num}/weights.npz" -o "${directory}/${option_name}/run${num}" &
+            python "run_${option_name}.py" -i "${directory}/${file_name}"  -w "${directory}/reweighting/run${num}/weights.npz" -o "${directory}/${option_name}/run${num}"
             ((num++))
         fi
 

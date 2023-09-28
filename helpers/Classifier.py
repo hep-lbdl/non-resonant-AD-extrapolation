@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.preprocessing import StandardScaler
 
 from helpers.utils import EarlyStopping, equalize_weights
 from tqdm import tqdm
@@ -65,6 +66,9 @@ class Classifier():
         self.n_inputs = n_inputs
         self.device = device
         self.model = Model(layers, n_inputs=n_inputs).to(self.device)
+        
+        # Scaler transform for preprocessing
+        self.scaler = StandardScaler()
 
         if loss_type == 'binary_crossentropy':
             self.loss_func = F.binary_cross_entropy
@@ -98,6 +102,10 @@ class Classifier():
         else:
             x_train, x_val, y_train, y_val = train_test_split(input_x, input_y, test_size=0.33, random_state=42)
         
+        # Data preprocessing
+        x_train = self.scaler.fit_transform(x_train)
+        x_val = self.scaler.transform(x_val)
+        
         x_train = self.np_to_torch(x_train)
         y_train = self.np_to_torch(y_train)
         
@@ -116,9 +124,12 @@ class Classifier():
         
         return train_dataloader, val_dataloader
     
-    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, early_stop=True, patience=5, min_delta=0.0002, save_model=False):
+    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, early_stop=True, patience=5, min_delta=0.00001, save_model=False):
         
         update_epochs = 1
+        # save the best model
+        best_val_loss = 10000
+        best_epoch = -1
         
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -132,7 +143,6 @@ class Classifier():
         train_data, val_data = self.process_data(input_x, input_y, weights=weights, batch_size=batch_size)
         
         for epoch in tqdm(range(n_epochs), ascii=' >='):
-            
             
             # Training
             
@@ -161,7 +171,6 @@ class Classifier():
             epochs.append(epoch)
             losses.append(mean_loss)
             
-            
             # Validation
             
             with torch.no_grad():
@@ -183,22 +192,36 @@ class Classifier():
                     val_loss = self.loss_func(batch_outputs, batch_labels, weight=batch_weights)
                     val_losses_batch_per_e.append(val_loss.detach().cpu().numpy())
 
-                epochs_val.append(epoch)
                 mean_val_loss = np.mean(val_losses_batch_per_e)
                 losses_val.append(mean_val_loss)
+                
+                # see if the model has the best val loss
+                if mean_val_loss < best_val_loss:
+                    best_val_loss  = mean_val_loss
+                    best_epoch = epoch
+                    # save the model
+                    if save_model:
+                        model_path = f"{self.outdir}/trained_AD_classifier.pt"
+                        torch.save(self, model_path)
+
 
                 if early_stop:
                     early_stopping(mean_val_loss)
 
-                log.debug(f"Epoch: {epoch} - loss: {mean_loss} - val loss: {mean_val_loss}")
+                log.debug(f"Epoch: {epoch} - loss: {mean_loss:.3f} - val loss: {mean_val_loss:.3f}")
                     
             if early_stop:
                 if early_stopping.early_stop:
                     break
-                    
+        if save_model:
+            log.info(f"Trained classifier from best epoch {best_epoch} save at {model_path}.")
+        else:
+            log.info(f"Done training classifier. The best epoch is {best_epoch}. Model is not saved.")
+        
+        
         plt.figure(figsize=(6,4))
         plt.plot(epochs, losses, label="loss")
-        plt.plot(epochs_val, losses_val, label="val loss")
+        plt.plot(epochs, losses_val, label="val loss")
         plt.xlabel("number of epochs")
         plt.ylabel("loss")
         plt.legend()
@@ -206,19 +229,17 @@ class Classifier():
         plt.savefig(f"{self.outdir}/classfier_loss.png")
         plt.close()
         
-        if save_model:
-            model_path = f"{self.outdir}/trained_AD_classifier.pt"
-            torch.save(self, model_path)
-            log.info(f"Train classifier save at {model_path}")
+
     
     def evaluation(self, X_test,y_test=None, weights=None):
         
         self.model.eval()
         
         with torch.no_grad():
+            X_test = self.scaler.transform(X_test)
             x_test = self.np_to_torch(X_test).to(self.device)
             outputs = self.model(x_test).detach().cpu().numpy()
-
+            
             # calculate auc 
             if y_test is not None:
                 auc = roc_auc_score(y_test, outputs)

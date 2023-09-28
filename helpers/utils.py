@@ -82,18 +82,17 @@ class EarlyStopping():
         
         if self.best_loss == None:
             self.best_loss = val_loss
-            
-        elif self.best_loss < val_loss:
-            logging.debug(f"Early stopping did not update the best loss.")
         
         elif self.best_loss - val_loss > self.min_delta:
+            log.debug(f"Early stopping couter reset: best loss {self.best_loss:.3f} => val loss {val_loss:.3f}.")
             self.best_loss = val_loss
             # reset counter if validation loss improves
             self.counter = 0
             
         elif self.best_loss - val_loss < self.min_delta:
             self.counter += 1
-            logging.debug(f"Early stopping counter {self.counter} of {self.patience}")
+            log.debug(f"Early stopping counter {self.counter} of {self.patience}")
             if self.counter >= self.patience:
-                logging.debug('Early stopping')
+                log.debug('Early stopping')
                 self.early_stop = True
+                

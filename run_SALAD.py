@@ -20,11 +20,18 @@ parser.add_argument(
     help=".npz file for input training samples and conditional inputs",
 )
 parser.add_argument(
-    '-s', 
-    "--samples",
+    '-w', 
+    "--weights",
     action="store",
     default=None,
-    help='Directly load generated samples.'
+    help='Directly load generated weights.'
+)
+parser.add_argument(
+    "-e",
+    "--evaluation",
+    action="store_true",
+    default=False,
+    help="Only evaluate the reweighting classifier.",
 )
 parser.add_argument(
     "-o",
@@ -61,16 +68,22 @@ def main():
         
     # load input files
     inputs = np.load(args.input)
-    # data and MC
+    # data MC, and bkg
     data_feature = inputs["data_feature"]
     data_context = inputs["data_context"]
     MC_feature = inputs["MC_feature"]
     MC_context = inputs["MC_context"]
+    bkg_feature = inputs["bkg_feature"]
+    bkg_context = inputs["bkg_context"]
     # SR and CR masks
     data_mask_CR = inputs["data_mask_CR"]
     data_mask_SR = inputs["data_mask_SR"]
     MC_mask_CR = inputs["MC_mask_CR"]
     MC_mask_SR = inputs["MC_mask_SR"]
+    bkg_mask_CR = inputs["bkg_mask_CR"]
+    bkg_mask_SR = inputs["bkg_mask_SR"]
+    # Signal injected
+    sig_percent = inputs["sig_percent"]
     inputs.close()
     
     # Get feature and contexts from data
@@ -84,20 +97,19 @@ def main():
     MC_feat_SR = MC_feature[MC_mask_SR]
     MC_cond_CR = MC_context[MC_mask_CR]
     MC_cond_SR = MC_context[MC_mask_SR]
-
-    # Get only contexts from MC
-    MC_cond_CR = MC_context[MC_mask_CR]
-    MC_cond_SR = MC_context[MC_mask_SR]
+    
+    # Get feature and contexts from MC
+    bkg_feat_CR = bkg_feature[bkg_mask_CR]
+    bkg_feat_SR = bkg_feature[bkg_mask_SR]
+    bkg_cond_CR = bkg_context[bkg_mask_CR]
+    bkg_cond_SR = bkg_context[bkg_mask_SR]
 
     # define useful variables
     nfeat = data_feat_CR.ndim
     ncond = data_cond_CR.ndim
     num_samples = 1 # can set to higher values
 
-    if args.samples is None:
-        
-        # train classifer for reweighting
-        log.info("Training a classifer for reweighting...")
+    if args.weights is None:
         
         # create training data set for classifier
         input_cond_CR = np.concatenate([MC_cond_CR, data_cond_CR], axis=0)
@@ -110,40 +122,61 @@ def main():
         
         input_y_train_CR = np.concatenate([MC_CR_label, data_CR_label], axis=0)
         
-        # train reweighting classifier
-        NN_reweight = Classifier(n_inputs=nfeat + ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/reweighting")
-        NN_reweight.train(input_x_train_CR, input_y_train_CR)
-
-        # TODO: properly generate test dataset
+        if not args.evaluation:
+            # train reweighting classifier
+            log.info("Training a classifer for reweighting...")
+            
+            NN_reweight_train = Classifier(n_inputs=nfeat + ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/reweighting")
+            NN_reweight_train.train(input_x_train_CR, input_y_train_CR, save_model=True)
+            
+        # load the best trained model
+        log.info("Loading the best classifer for reweighting...")
+        
+        model_path = f"{args.outdir}/reweighting/trained_AD_classifier.pt"
+        NN_reweight = torch.load(f"{model_path}")
+        NN_reweight.to(device)
         
         # evaluate classifier and calculate the weights
         input_x_test = np.concatenate([MC_cond_SR, MC_feat_SR.reshape(-1,1)], axis=1)
         
-        w_MC = NN_reweight.evaluation(input_x_test)
-        w_MC = (w_MC/(1.-w_MC)).flatten()
+        w_SR = NN_reweight.evaluation(input_x_test)
+        w_SR = (w_SR/(1.-w_SR)).flatten()
         
-        # plot reweigted distribution
-        plot_kwargs = {"title":"Reweighted MC vs data in SR for m1", "xlabel":"m1", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
-        plot_multi_dist([MC_cond_SR[:,0], MC_cond_SR[:,0], data_cond_SR[:,0]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
-        
-        plot_kwargs = {"title":"Reweighted MC vs data in SR for m2", "xlabel":"m2", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
-        plot_multi_dist([MC_cond_SR[:,1], MC_cond_SR[:,1], data_cond_SR[:,1]], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
-        
-        plot_kwargs = {"title":"Reweighted MC vs data in SR for x", "xlabel":"x", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}/reweighting"}
-        plot_multi_dist([MC_feat_SR, MC_feat_SR, data_feat_SR], ["MC", "reweighted MC", "data"], [None, w_MC, None], **plot_kwargs)
+        # make validation plots in CR
+        input_x_test_CR = np.concatenate([MC_cond_CR, MC_feat_CR.reshape(-1,1)], axis=1)
+        w_CR = NN_reweight.evaluation(input_x_test_CR)
+        w_CR = (w_CR/(1.-w_CR)).flatten()
 
         # save weights
-        np.savez(f"{args.outdir}/SALAD_weights.npz", weights = w_MC)
+        np.savez(f"{args.outdir}/SALAD_weights.npz", weights = w_SR)
+        
+        os.makedirs(f"{args.outdir}/reweighting_plots", exist_ok=True)
+
+        # plot reweigted distribution
+        for i in [0,1]:
+
+            hlist = [MC_cond_SR[:,i], MC_cond_SR[:,i], bkg_cond_SR[:,i], MC_cond_CR[:,i], MC_cond_CR[:,i], data_cond_CR[:,i]]
+            weights = [None, w_SR, None, None, w_CR, None]
+            labels = ["MC SR", "reweighted MC SR", "true bkg SR", "MC CR", "reweighted MC CR", "data CR"]
+            htype = ["step", "stepfilled", "step"]*2
+            lstyle = ["-"]*3 + ["--"]*3
+            plot_kwargs = {"title":f"Reweighted MC vs data for m{i+1}, S/B={sig_percent*1e2:.3f}%", "name":f"MC vs data reweighting m{i+1}", "xlabel":f"m{i+1}", "ymin":-10, "ymax":10, "outdir":f"{args.outdir}/reweighting_plots"}
+            plot_multi_dist(hlist, labels, weights=weights, htype=htype, lstyle=lstyle, **plot_kwargs)
+
+
+        hlist = [MC_feat_SR, MC_feat_SR, bkg_feat_SR, MC_feat_CR, MC_feat_CR, data_feat_CR]
+        weights = [None, w_SR, None, None, w_CR, None]
+        labels = ["MC SR", "reweighted MC SR", "true bkg SR", "MC CR", "reweighted MC CR", "data CR"]
+        htype = ["step", "stepfilled", "step"]*2
+        lstyle = ["-"]*3 + ["--"]*3
+        plot_kwargs = {"title":f"Reweighted MC vs data for x, S/B={sig_percent*1e2:.3f}%", "name":"MC vs data reweighting x", "xlabel":"x", "ymin":-10, "ymax":10, "outdir":f"{args.outdir}/reweighting_plots"}
+        plot_multi_dist(hlist, labels, weights=weights, htype=htype, lstyle=lstyle, **plot_kwargs)        
+
         
     else:
         # load weights
-        w_MC = np.load(args.samples)["weights"]
+        w_SR = np.load(args.weights)["weights"]
 
-#     plot_kwargs = {"tag":"2DSR_unweighted", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-#     plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
-        
-#     plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-#     plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
     
     log.info("Training a classifer for signal vs background...")
     
@@ -158,7 +191,7 @@ def main():
     input_y_train_SR = np.concatenate([MC_SR_label, data_SR_label], axis=0)
 
     w_data = np.array([1.]*len(data_feat_SR))
-    input_weights = np.hstack([w_MC, w_data]).reshape(-1, 1)
+    input_weights = np.hstack([w_SR, w_data]).reshape(-1, 1)
     
     # train classifier for x, m1 and m2
     NN = Classifier(n_inputs=nfeat + ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")

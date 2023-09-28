@@ -3,7 +3,7 @@ import numpy as np
 from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_kl_div_data_reweight, plot_SIC_lists, plot_multi_max_SIC
+from helpers.plotting import plot_avg_max_SIC
 import torch
 import os
 import sys
@@ -21,7 +21,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "-n",
-    "--name",
+    "--names",
     action="store",
     nargs='+',
     default="",
@@ -40,27 +40,30 @@ def main():
     
     os.makedirs(args.outdir, exist_ok=True)
     
-    if len(args.input) != len(args.name):
+    sig_percent = []
+    avg_max_SIC_list = []
+    name_list = []
     
-        raise RuntimeError("Lengths of input and name lists do not match.")
-
-    else:
-        
+    for name in args.names:
+    
         input_files = []
         for input_dir in args.input:
-            input_files.extend(glob.glob(f"{input_dir}/max_SIC_*.npz"))
+            input_files.extend(glob.glob(f"{input_dir}/plot_sig_inj_{name}/max_SIC_{name}.npz"))
 
-        name_list = args.name
+        print(f"Files loaded for {name}.")
+
+        sig_percent = np.load(input_files[0])["sig_percent"]
+
+        max_SIC_list = [np.load(f)["max_SIC"] for f in input_files]
         
-        print(f"Files loaded! Input contains {name_list}.")
-    
-    
-    sig_percent = np.load(input_files[0])["sig_percent"]
-    
-    max_SIC_list = [np.load(f)["max_SIC"] for f in input_files]
-    
-    plot_multi_max_SIC(sig_percent, max_SIC_list, name_list, outdir=f"{args.outdir}")
+        avg_max_SIC = np.mean(np.stack(max_SIC_list, axis=0), axis=0)
 
+        avg_max_SIC_list.append(avg_max_SIC)
+        name_list.append(name)
+    
+    ntrains = int(len(args.input))
+    plot_avg_max_SIC(sig_percent, avg_max_SIC_list, name_list, outdir=f"{args.outdir}", title=f"Average max SIC for {ntrains} trainings", tag=f"{ntrains}")
+    
     
 if __name__ == "__main__":
     main()

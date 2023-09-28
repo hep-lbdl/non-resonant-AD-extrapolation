@@ -105,8 +105,8 @@ def main():
     input_weights = np.hstack([w_bkg, w_sig]).reshape(-1, 1)
     
     # train classifier for x, m1 and m2
-    NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, weights=input_weights, min_delta=0.002, save_model=True)
+    NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+    NN.train(input_x, input_y, weights=input_weights, n_epochs=300, save_model=True)
 
     log.info("Fully supervised learning done!")
     
