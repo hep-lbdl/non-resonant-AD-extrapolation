@@ -31,6 +31,9 @@ There will be a toy example and a physics example.
 
 `plot_multi_SIC_max.py`: plot the max SIC vs S/B for different mathods.
 
+## Automated bash script
+
+`run_full_AD.sh`: a bash script that full the full workflow.
 
 ## Documentations
 
