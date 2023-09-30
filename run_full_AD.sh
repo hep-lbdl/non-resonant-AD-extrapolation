@@ -15,7 +15,7 @@ for file_path in "${directory}/inputs_s"*.npz; do
     file_name=$(basename "$file_path")
     echo "$file_name"
 
-    "run-reweighting" -i "${directory}/${file_name}"  -o "${directory}/${option_name}/run${num}"
+    "run-reweighting" -i "${directory}/${file_name}" -o "${directory}/reweighting/run${num}"
     ((num++))
 
 done
