@@ -82,6 +82,9 @@ class Classifier():
         
     def to(self, device):
         self.model.to(device)
+
+    def set_outdir(self, outdir_path):
+        self.outdir = outdir_path
     
     def np_to_torch(self, array):
     

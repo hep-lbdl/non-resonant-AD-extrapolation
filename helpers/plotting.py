@@ -327,21 +327,23 @@ def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
     
 
-def plot_avg_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./", title="Maximum significance improvement", tag=""):
+def plot_avg_max_SIC(sig_percent, max_SIC_list, lb_list, ub_list, label_list, outdir="./", title="Maximum significance improvement", tag=""):
+    
+    colors = ['teal', 'royalblue', 'limegreen', 'darkorange', 'mediumorchid']
     
     sig_percent = np.array(sig_percent)*100
     
     plt.figure(figsize=(7, 5))
     
     for i in range(len(max_SIC_list)):
-    
-        plt.plot(sig_percent, max_SIC_list[i], '-', label=label_list[i])  # Line color (default)
-        plt.plot(sig_percent, max_SIC_list[i], 'x', color='black')  # Marker color (black)
+
+        plt.plot(sig_percent, max_SIC_list[i], '-x', label=label_list[i], color=colors[i])
+        plt.fill_between(sig_percent, lb_list[i], ub_list[i], alpha = 0.2, color = colors[i])
     
     plt.xscale('log')
     plt.ylabel(r"max SIC")
     plt.xlabel("S/B (%)")
-    plt.legend()
+    plt.legend(edgecolor='none', facecolor='none')
     plt.title(f"{title}")
     plt.savefig(f"{outdir}/avg_maxSIC{tag}.png")
     

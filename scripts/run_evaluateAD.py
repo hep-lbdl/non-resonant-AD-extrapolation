@@ -103,6 +103,7 @@ def main():
     
     NN = torch.load(f"{args.model}")
     NN.to(device)
+    NN.set_outdir(f"{args.outdir}/signal_significance")
     
     # Evaluate the classifier.
     output = NN.evaluation(input_x, input_y)

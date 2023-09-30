@@ -1,8 +1,8 @@
 #!/bin/bash
 
-directory="sig_inj_test"
+directory="sig_inj_test_9"
 
-options=("CATHODE" "FETA" "SALAD" "idealAD" "supervised" "CATHODE_from_truth")
+options=("CATHODE" "FETA" "SALAD" "idealAD" "supervised")
 
 
 ###################
@@ -15,7 +15,7 @@ for file_path in "${directory}/inputs_s"*.npz; do
     file_name=$(basename "$file_path")
     echo "$file_name"
 
-    "run-${option_name}" -i "${directory}/${file_name}"  -o "${directory}/${option_name}/run${num}" &
+    "run-reweighting" -i "${directory}/${file_name}"  -o "${directory}/${option_name}/run${num}"
     ((num++))
 
 done
@@ -77,5 +77,5 @@ done
 #####################
 
 
-plt-multi-SIC -h
-plt-avg-SIC -h
+# plt-multi-SIC -h
+# plt-avg-SIC -h

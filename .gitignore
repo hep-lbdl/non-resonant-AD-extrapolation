@@ -12,3 +12,5 @@ lightning_logs/
 checkpoints/
 .ipynb_checkpoints/
 
+
+old_files/
