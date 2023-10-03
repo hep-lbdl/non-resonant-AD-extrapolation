@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.preprocessing import StandardScaler
 
-from helpers.utils import EarlyStopping, equalize_weights
+from helpers.utils import EarlyStopping, equalize_weights, get_roc_curve
 from tqdm import tqdm
 import yaml
 
@@ -127,7 +127,7 @@ class Classifier():
         
         return train_dataloader, val_dataloader
     
-    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, early_stop=True, patience=5, min_delta=0.00001, save_model=False):
+    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, early_stop=True, patience=5, min_delta=0.00001, save_model=False, model_name=""):
         
         update_epochs = 1
         # save the best model
@@ -204,7 +204,7 @@ class Classifier():
                     best_epoch = epoch
                     # save the model
                     if save_model:
-                        model_path = f"{self.outdir}/trained_AD_classifier.pt"
+                        model_path = f"{self.outdir}/trained_AD_classifier{model_name}.pt"
                         torch.save(self, model_path)
 
 
@@ -234,7 +234,7 @@ class Classifier():
         
 
     
-    def evaluation(self, X_test,y_test=None, weights=None):
+    def evaluation(self, X_test,y_test=None, weights=None, model_name=""):
         
         self.model.eval()
         
@@ -243,27 +243,8 @@ class Classifier():
             x_test = self.np_to_torch(X_test).to(self.device)
             outputs = self.model(x_test).detach().cpu().numpy()
             
-            # calculate auc 
-            if y_test is not None:
-                auc = roc_auc_score(y_test, outputs)
-                fpr, tpr, _ = roc_curve(y_test, outputs, sample_weight=weights)
-                np.save(f"{self.outdir}/fpr.npy", fpr)
-                np.save(f"{self.outdir}/tpr.npy", tpr)
-
+        # calculate auc 
         if y_test is not None:
-            fig, ax = plt.subplots(1, 1, figsize=(7, 5))
-            ax.plot(fpr, tpr, label=f"AUC: {auc:.3f}")
-            ax.set_xlabel("FPR")
-            ax.set_ylabel("TPR")
-            ax.set_title(f"ROC curve")
-            ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
-            fname = f"{self.outdir}/roc.png"
-            ax.legend()
-            fig.savefig(fname)
-
-            if auc < 0.5:
-                auc = 1.0 - auc
-
-            print(f"AUC: {auc}.")
+            get_roc_curve(outputs, y_test, outdir=self.outdir, model_name=model_name, weights=weights)
             
         return outputs

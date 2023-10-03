@@ -1,14 +1,13 @@
 import argparse
 import numpy as np
 from math import sin, cos, pi
-from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
-from helpers.utils import equalize_weights
-from sklearn.model_selection import train_test_split
+from helpers.plotting import plot_SIC
+from helpers.utils import get_roc_curve
 import torch
 import os
 import sys
+import glob
 import logging
 
 
@@ -19,13 +18,6 @@ parser.add_argument(
     action="store",
     default=None,
     help=".npz file for input training samples and conditional inputs",
-)
-parser.add_argument(
-    '-m', 
-    "--model",
-    action="store",
-    default=None,
-    help='Load trained model from path.'
 )
 parser.add_argument(
     '-n', 
@@ -101,12 +93,24 @@ def main():
     # Load the trained model
     logging.info("Loading a trained NN...")
     
-    NN = torch.load(f"{args.model}")
-    NN.to(device)
-    NN.set_outdir(f"{args.outdir}/signal_significance")
+    model_paths = glob.glob(f"{args.outdir}/signal_significance/trained_AD_classifier*.pt")
+    output_list = []
+    n_model = 0
+    for model in model_paths:
+        
+        NN = torch.load(model)
+        NN.to(device)
+        NN.set_outdir(f"{args.outdir}/signal_significance")
     
-    # Evaluate the classifier.
-    output = NN.evaluation(input_x, input_y)
+        # Evaluate the classifier.
+        output = NN.evaluation(input_x, input_y, model_name=f"{n_model}")
+        n_model += 1
+        output_list.append(output.flatten())
+    
+    output_arr = np.stack(output_list, axis=0)
+    mean_output = np.mean(output_arr, axis=0)
+    
+    get_roc_curve(mean_output, input_y.flatten(), outdir=f"{args.outdir}/signal_significance", model_name="")
     
     tpr = np.load(f"{args.outdir}/signal_significance/tpr.npy")
     fpr = np.load(f"{args.outdir}/signal_significance/fpr.npy")

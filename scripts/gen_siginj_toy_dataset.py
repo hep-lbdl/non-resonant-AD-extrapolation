@@ -69,7 +69,7 @@ def main():
     if args.test:
         sig_percent_list = [1]
     else:
-        sig_percent_list = np.logspace(np.log10(0.0005),np.log10(0.006),10).round(5)
+        sig_percent_list = np.logspace(np.log10(0.0005),np.log10(0.01),10).round(5)
     
     data_feature_list = []
     MC_feature_list = []

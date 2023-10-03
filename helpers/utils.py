@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 import logging
-
+from sklearn.metrics import roc_auc_score, roc_curve
+import matplotlib.pyplot as plt
 log = logging.getLogger("run")
 
 
@@ -25,8 +26,33 @@ def equalize_weights(y_train, y_val, weights_train, weights_val):
     return weights_train, weights_val
 
 
+def get_roc_curve(outputs, y_test, outdir="./", model_name="", weights=None):
+
+    auc = roc_auc_score(y_test, outputs)
+    fpr, tpr, _ = roc_curve(y_test, outputs, sample_weight=weights)
+    np.save(f"{outdir}/fpr{model_name}.npy", fpr)
+    np.save(f"{outdir}/tpr{model_name}.npy", tpr)
+    
+    if auc < 0.5:
+        auc = 1.0 - auc
+
+    fig, ax = plt.subplots(1, 1, figsize=(7, 5))
+    ax.plot(fpr, tpr, label=f"AUC: {auc:.3f}")
+    ax.set_xlabel("FPR")
+    ax.set_ylabel("TPR")
+    ax.set_title(f"ROC curve")
+    ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
+    fname = f"{outdir}/roc{model_name}.png"
+    ax.legend()
+    fig.savefig(fname)
+
+    log.info(f"AUC: {auc}.")
+    
+
+
+
 """
-Code adapted from https://debuggercafe.com/using-learning-rate-scheduler-and-early-stopping-with-pytorch/
+Code below adapted from https://debuggercafe.com/using-learning-rate-scheduler-and-early-stopping-with-pytorch/
 """
 
 class LRScheduler():

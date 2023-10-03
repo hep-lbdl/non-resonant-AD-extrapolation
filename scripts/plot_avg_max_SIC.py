@@ -8,7 +8,6 @@ import sys
 import logging
 import glob
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-i",
@@ -32,8 +31,21 @@ parser.add_argument(
     default="outputs",
     help="output directory",
 )
+parser.add_argument(
+    "-v",
+    "--verbose",
+    action="store_true",
+    default=False,
+    help="Verbose enable DEBUG",
+)
 args = parser.parse_args()
 
+logging.basicConfig(level=logging.INFO)
+
+log_level = logging.DEBUG if args.verbose else logging.INFO
+    
+log = logging.getLogger("run")
+log.setLevel(log_level)
 
 def main():
     
@@ -52,7 +64,12 @@ def main():
         for input_dir in args.input:
             input_files.extend(glob.glob(f"{input_dir}/plot_sig_inj_{name}/max_SIC_{name}.npz"))
 
-        print(f"Total of {len(input_files)} files loaded for {name}.")
+        log.info(f"Total of {len(input_files)} files loaded for {name}.")
+        indires = sorted([file_name.split('/')[0] for file_name in input_files])
+        
+        sorted_files = sorted(indires, key=lambda x: int(x.split('_')[-1]))
+        log.debug(f"Input files: {sorted_files}.")
+        
         ntrains = int(len(input_files))
 
         sig_percent = np.load(input_files[0])["sig_percent"]
