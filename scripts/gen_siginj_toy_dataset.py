@@ -17,7 +17,14 @@ parser.add_argument(
     "--test",
     action="store_true",
     default=False,
-    help='Generate test sets.'
+    help='Generate test datasets.'
+)
+parser.add_argument(
+    '-s', 
+    "--supervised",
+    action="store_true",
+    default=False,
+    help='Generate supervised datasets.'
 )
 args = parser.parse_args()
 
@@ -68,6 +75,8 @@ def main():
     # initialize lists
     if args.test:
         sig_percent_list = [1]
+    elif args.supervised:
+        sig_percent_list = [1]*20
     else:
         sig_percent_list = np.logspace(np.log10(0.0005),np.log10(0.01),10).round(5)
     
@@ -123,11 +132,12 @@ def main():
         print(f"S/B={s}, N1+N2={N1+N2}, data_context: {data_context.shape}, data_feature: {data_feature.shape}")
         
         if args.test:
-            
             np.savez(f"./{args.outdir}/test_inputs.npz", bkg_feature=bkg_feature, bkg_context=bkg_context, sig_feature = sig_feature, sig_context = sig_context, bkg_mask_SR=bkg_mask_SR, sig_mask_SR = sig_mask_SR, sig_percent=s)
+        
+        if args.supervised:
+            np.savez(f"./{args.outdir}/supervised_inputs_{num}.npz", bkg_feature=bkg_feature, bkg_context=bkg_context, sig_feature = sig_feature, sig_context = sig_context, bkg_mask_SR=bkg_mask_SR, sig_mask_SR = sig_mask_SR, sig_percent=s)
             
         else:
-            
             np.savez(f"./{args.outdir}/inputs_s{num}.npz", data_feature=data_feature, data_context=data_context, MC_feature=MC_feature, MC_context=MC_context, bkg_feature=bkg_feature, bkg_context=bkg_context, sig_feature = sig_feature, sig_context = sig_context, data_mask_CR=data_mask_CR, data_mask_SR=data_mask_SR, MC_mask_CR=MC_mask_CR, MC_mask_SR=MC_mask_SR, bkg_mask_CR=bkg_mask_CR, bkg_mask_SR=bkg_mask_SR, sig_mask_CR = sig_mask_CR, sig_mask_SR = sig_mask_SR, sig_percent=s)
         
         
@@ -147,7 +157,7 @@ def main():
         num = num +1
 
         
-    if args.test is False:
+    if args.test is False and args.supervised is False:
         # Plot data and MC contexts
         plot_kwargs = {"name":f"data_vs_mc_m1_s{num}", "title":f"Input context: data $m_1 = N({bkg_mean},{bkg_std})$ and MC $m_1 = N({MC_mean},{MC_std}) with S/B = {s}$", "xlabel":r"$m_1$", "ymin":-15, "ymax":15, "outdir":args.outdir}
         plot_multi_data_MC_dist(data_cond_m1_list, MC_cond_m1_list, labels, **plot_kwargs)

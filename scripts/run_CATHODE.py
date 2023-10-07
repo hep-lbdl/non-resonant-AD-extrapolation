@@ -178,7 +178,7 @@ def main():
     
     # Train a classifier for x, m1 and m2.
     NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, weights=input_weights, save_model=True)
+    NN.train(input_x, input_y, weights=input_weights, save_model=True, model_name="0")
 
     log.info("CATHODE style extrapolation done!")
     

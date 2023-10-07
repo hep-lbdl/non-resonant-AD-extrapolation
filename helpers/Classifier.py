@@ -122,8 +122,8 @@ class Classifier():
             train_dataset = torch.utils.data.TensorDataset(x_train, y_train)
             val_dataset = torch.utils.data.TensorDataset(x_val, y_val)
         
-        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers = 8, pin_memory = True)
-        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
+        train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=1, pin_memory=True)
+        val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=1, pin_memory=True)
         
         return train_dataloader, val_dataloader
     
@@ -167,10 +167,10 @@ class Classifier():
                 batch_outputs = self.model(batch_inputs)
                 loss = self.loss_func(batch_outputs, batch_labels, weight=batch_weights)
                 losses_batch_per_e.append(loss.detach().cpu().numpy())
-                mean_loss = np.mean(losses_batch_per_e)
                 loss.backward()
                 self.optimizer.step()
 
+            mean_loss = np.mean(losses_batch_per_e)
             epochs.append(epoch)
             losses.append(mean_loss)
             

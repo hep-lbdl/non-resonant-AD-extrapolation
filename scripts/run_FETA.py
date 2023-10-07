@@ -140,13 +140,14 @@ def main():
     # Load weights    
     w_MC = np.load(args.weights)["weights"]
     
-    # Make validation plots.
-    plot_kwargs = {"tag":"2DSR_unweighted", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-    plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
-        
-    plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
-    plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
-    
+    if args.verbose:
+        # Make validation plots.
+        plot_kwargs = {"tag":"2DSR_unweighted", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
+        plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+
+        plot_kwargs = {"weights2":[w_MC], "tag":"2DSR", "ymin":-15, "ymax":15, "outdir":f"{args.outdir}"}
+        plot_kl_div([data_feat_SR], [pred_bkg_SR], "true SR", "gen SR", [0.5], [pi/4], **plot_kwargs)
+
     
     log.info("Training a classifer for signal vs background...")
     
@@ -166,7 +167,7 @@ def main():
     
     # Train a classifier for x, m1 and m2.
     NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, weights=input_weights, save_model=True)
+    NN.train(input_x, input_y, weights=input_weights, save_model=True, model_name="0")
 
     
     log.info("FETA style extrapolation done!")

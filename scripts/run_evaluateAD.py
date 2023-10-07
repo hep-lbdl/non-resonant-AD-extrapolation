@@ -103,7 +103,7 @@ def main():
         NN.set_outdir(f"{args.outdir}/signal_significance")
     
         # Evaluate the classifier.
-        output = NN.evaluation(input_x, input_y, model_name=f"{n_model}")
+        output = NN.evaluation(input_x, input_y)
         n_model += 1
         output_list.append(output.flatten())
     

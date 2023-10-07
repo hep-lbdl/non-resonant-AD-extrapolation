@@ -20,11 +20,12 @@ parser.add_argument(
     help=".npz file for input training samples and conditional inputs",
 )
 parser.add_argument(
-    '-s', 
-    "--samples",
+    '-t', 
+    "--trains",
     action="store",
-    default=None,
-    help='Directly load generated samples.'
+    type=int,
+    default=1,
+    help='Number of trainings.'
 )
 parser.add_argument(
     "-o",
@@ -104,10 +105,17 @@ def main():
     data_feat_SR_label = np.ones(data_feat_SR.shape)
     input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
 
-    # train classifier for x, m1 and m2
-    NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512)
+    # Train the AD Classifier
     
+    log.info(f"Ensamble size: {args.trains}")
+    
+    for i in range(args.trains):
+        # train classifier for x, m1 and m2
+        log.info(f"Training a classifer for signal vs background...")
+        
+        NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512, model_name=f"{i+6}")
+
 
     log.info("Ideal AD done!")
     

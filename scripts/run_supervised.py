@@ -21,11 +21,12 @@ parser.add_argument(
     help=".npz file for input training samples and conditional inputs",
 )
 parser.add_argument(
-    '-s', 
-    "--samples",
+    '-t', 
+    "--trains",
     action="store",
-    default=None,
-    help='Directly load generated samples.'
+    type=int,
+    default=1,
+    help='Number of trainings.'
 )
 parser.add_argument(
     "-o",
@@ -104,9 +105,16 @@ def main():
     w_sig = np.array([1.]*len(sig_feat_SR))
     input_weights = np.hstack([w_bkg, w_sig]).reshape(-1, 1)
     
-    # train classifier for x, m1 and m2
-    NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, weights=input_weights, n_epochs=300, save_model=True)
+    # Train the AD Classifier
+    
+    log.info(f"Ensamble size: {args.trains}")
+    
+    for i in range(args.trains):
+        # train classifier for x, m1 and m2
+        log.info(f"Training a classifer for signal vs background...")
+        
+        NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512, model_name=f"{i}")
 
     log.info("Fully supervised learning done!")
     

@@ -27,6 +27,14 @@ parser.add_argument(
     help='Directly load generated weights.'
 )
 parser.add_argument(
+    '-t', 
+    "--trains",
+    action="store",
+    type=int,
+    default=1,
+    help='Number of trainings.'
+)
+parser.add_argument(
     "-e",
     "--evaluation",
     action="store_true",
@@ -175,6 +183,7 @@ def main():
         
     else:
         # load weights
+        log.info("Loading SALAD weights...")
         w_SR = np.load(args.weights)["weights"]
 
     
@@ -193,9 +202,17 @@ def main():
     w_data = np.array([1.]*len(data_feat_SR))
     input_weights = np.hstack([w_SR, w_data]).reshape(-1, 1)
     
-    # train classifier for x, m1 and m2
-    NN = Classifier(n_inputs=nfeat + ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x_train_SR, input_y_train_SR, weights=input_weights, save_model=True)
+    
+    # Train the AD Classifier
+    
+    log.info(f"Ensamble size: {args.trains}")
+    
+    for i in range(args.trains):
+        # Train a classifier for x, m1 and m2.
+        log.info(f"Training a classifer for signal vs background...")
+        
+        NN = Classifier(n_inputs=nfeat + ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+        NN.train(input_x_train_SR, input_y_train_SR, weights=input_weights, save_model=True, model_name=f"{i}")
 
     log.info("SALAD extrapolation done!")
     
