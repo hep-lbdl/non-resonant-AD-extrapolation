@@ -305,8 +305,9 @@ options:
 
 ## Automated bash script
 
-`run_full_AD.sh`: a bash script that runs the full workflow.
-`run_ensemble_AD.sh`: a bash scriupt that runs the ensembling workflow.
+- `run_full_AD.sh`: a bash script that runs the full workflow.
+  
+- `run_ensemble_AD.sh`: a bash scriupt that runs the ensembling workflow.
 
 ## Documentations
 
