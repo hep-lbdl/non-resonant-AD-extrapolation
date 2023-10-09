@@ -114,7 +114,7 @@ def main():
         log.info(f"Training a classifer for signal vs background...")
         
         NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512, model_name=f"{i+6}")
+        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512, model_name=f"{i}")
 
 
     log.info("Ideal AD done!")

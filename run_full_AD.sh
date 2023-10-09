@@ -2,7 +2,8 @@
 
 options=("CATHODE" "FETA" "SALAD" "idealAD")
 
-task () {
+
+task_reweighting () {
 
     local run=$1
     echo "run test $run."
@@ -19,10 +20,19 @@ task () {
         file_name=$(basename "$file_path")
         echo "${directory}/$file_name"
 
-        # "run-reweighting" -i "${directory}/${file_name}" -o "${directory}/reweighting/run${num}"
+        "run-reweighting" -i "${directory}/${file_name}" -o "${directory}/reweighting/run${num}"
         ((num++))
 
     done
+}
+
+
+task_AD () {
+
+    local run=$1
+    echo "run test $run."
+    
+    directory="dataset_$run"
 
     ####################
     # run extrapoation #
@@ -39,11 +49,11 @@ task () {
 
             if [ "${option_name}" != "CATHODE" ] && [ "${option_name}" != "FETA" ]; then
                 "run-${option_name}" -i "${directory}/${file_name}"  -o "${directory}/${option_name}/run${num}"
-                ((num++))
             else
-                "run-${option_name}" -i "${directory}/${file_name}"  -w "${directory}/reweighting/run${num}/weights.npz" -o "${directory}/${option_name}/run${num}"
-                ((num++))
+                "run-${option_name}" -i "${directory}/${file_name}"  -w "${directory}/reweighting/run${num}/weights.npz" -o "${directory}/${option_name}/run${num}"    
             fi
+            
+            ((num++))
 
         done
 
@@ -99,4 +109,5 @@ task_supervised () {
 }
 
 
-# task 0
+
+# task_xxx 0
