@@ -69,6 +69,7 @@ def main():
         bins = np.linspace(0, 1, 20) if "tau" in x else None
         
         plot_quantity_list([sig_x, bkg_x], labels_list, title, xlabel, bins, x, args.outdir)
+        plot_quantity_list_ratio([sig_x, bkg_x], labels_list, title, xlabel, bins, x, args.outdir)
     
     
     

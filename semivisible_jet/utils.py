@@ -62,4 +62,33 @@ def plot_quantity_list(data_list, label_list, title, xlabel, bins=None, figname=
     if len(figname)>0:
         plt.savefig(f"{outdir}/{figname}.png")
     plt.close
+
+    
+def plot_quantity_list_ratio(data_list, label_list, title, xlabel, bins=None, figname="", outdir="plots"):
+    plt.figure(figsize=(8,6))
+
+    fig, ax = plt.subplots(2, figsize = (8, 6), gridspec_kw={'height_ratios': [2, 1]})
+    
+    if bins is None:
+        bins = np.linspace(np.min(data_list[0]), np.max(data_list[0]), 20)
+        
+    for i in range(len(label_list)):
+        ax[0].hist(data_list[i], bins = bins, density = True, histtype='step', label=label_list[i])
+    
+    mask = data_list[0] != 0
+    ratio = data_list[0][mask]/data_list[1][mask]
+    
+    ax[1].hist(ratio, bins = bins, density = False, histtype='step', label=label_list[i])
+    ax[1].set_xlabel(xlabel, fontsize=14)
+    ax[1].set_ylim([0,2])
+    
+    ax[0].set_ylabel("Events (A.U)", fontsize=14)  
+    ax[1].set_ylabel("sig/bkg")
+
+    plt.title(title, fontsize=16)
+    plt.legend(fontsize=14)
+    plt.show
+    if len(figname)>0:
+        plt.savefig(f"{outdir}/{figname}_ratio.png")
+    plt.close
     
