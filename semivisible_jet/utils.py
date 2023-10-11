@@ -52,7 +52,10 @@ def plot_quantity_list(data_list, label_list, title, xlabel, bins=None, figname=
     if bins is None:
         bins = np.linspace(np.min(data_list[0]), np.max(data_list[0]), 20)
     for i in range(len(label_list)):
-        plt.hist(data_list[i], bins = bins, density = True, histtype='step', label=label_list[i])
+        if i == len(label_list)-1:
+            plt.hist(data_list[i], bins = bins, density = True, ls='--', color='darkred', histtype='step', label=label_list[i])
+        else:
+            plt.hist(data_list[i], bins = bins, density = True, histtype='step', label=label_list[i])
 
     plt.title(title, fontsize=16)
     plt.xlabel(xlabel, fontsize=14)
