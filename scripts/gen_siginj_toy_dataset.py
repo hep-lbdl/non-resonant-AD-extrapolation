@@ -44,6 +44,10 @@ def main():
     sig_mean = 2.8
     sig_std = 0.5
 
+    # define correlation between m1, m2 and x.
+    k = 0.5
+    theta = pi/4
+    
     os.makedirs(args.outdir, exist_ok=True)
     
     if args.test:
@@ -59,14 +63,14 @@ def main():
         MC_mask_CR = np.logical_not((MC_m1 > 1) & (MC_m2 > 1))
         MC_mask_SR = ((MC_m1 > 1) & (MC_m2 > 1))
 
-        MC_feature = X(0.5, pi/4, MC_m1, MC_m2, N1)
+        MC_feature = X(k, theta, MC_m1, MC_m2, N1)
     
 
     # data bkg-only
     bkg_m1 = np.random.normal(bkg_mean, bkg_std, N1).astype(dtype=np.float32)
     bkg_m2 = np.random.normal(bkg_mean, bkg_std, N1).astype(dtype=np.float32)
     
-    bkg_feature = X(0.5, pi/4, bkg_m1, bkg_m2, n=N1)
+    bkg_feature = X(k, theta, bkg_m1, bkg_m2, n=N1)
     bkg_context = np.stack([bkg_m1, bkg_m2], axis = -1)
     bkg_mask_CR = np.logical_not((bkg_m1 > 1) & (bkg_m2 > 1))
     bkg_mask_SR = ((bkg_m1 > 1) & (bkg_m2 > 1))
@@ -108,7 +112,7 @@ def main():
             data_m1 = np.hstack([bkg_m1, sig_m1])
             data_m2 = np.hstack([bkg_m2, sig_m2])
 
-            sig_feature = X(0.5, pi/4, sig_m1, sig_m2, n=N2)
+            sig_feature = X(k, theta, sig_m1, sig_m2, n=N2)
             sig_context = np.stack([sig_m1, sig_m2], axis = -1)
             sig_mask_CR = np.logical_not((sig_m1 > 1) & (sig_m2 > 1))
             sig_mask_SR = ((sig_m1 > 1) & (sig_m2 > 1))
@@ -123,7 +127,7 @@ def main():
             sig_mask_CR = np.empty((0))
             sig_mask_SR = np.empty((0))
         
-        data_feature = X(0.5, pi/4, data_m1, data_m2, n=N1+N2)
+        data_feature = X(k, theta, data_m1, data_m2, n=N1+N2)
         data_context = np.stack([data_m1, data_m2], axis = -1)
         data_mask_CR = np.logical_not((data_m1 > 1) & (data_m2 > 1))
         data_mask_SR = ((data_m1 > 1) & (data_m2 > 1))
@@ -134,7 +138,7 @@ def main():
         if args.test:
             np.savez(f"./{args.outdir}/test_inputs.npz", bkg_feature=bkg_feature, bkg_context=bkg_context, sig_feature = sig_feature, sig_context = sig_context, bkg_mask_SR=bkg_mask_SR, sig_mask_SR = sig_mask_SR, sig_percent=s)
         
-        if args.supervised:
+        elif args.supervised:
             np.savez(f"./{args.outdir}/supervised_inputs_{num}.npz", bkg_feature=bkg_feature, bkg_context=bkg_context, sig_feature = sig_feature, sig_context = sig_context, bkg_mask_SR=bkg_mask_SR, sig_mask_SR = sig_mask_SR, sig_percent=s)
             
         else:
