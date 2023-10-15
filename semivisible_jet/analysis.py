@@ -58,7 +58,7 @@ def main():
     
     for x in variables:
         
-        if ("phi_" in x) or ("eta" in x):
+        if ("phi" in x) or ("Phi" in x) or ("eta" in x):
             continue
             
         ind_x = ind(variables, x)
@@ -68,11 +68,11 @@ def main():
         xlabel = f"{names[x]} {units[x]}"
         
         if "tau" in x:
-            bins = np.linspace(0, 1, 30)
+            bins = np.linspace(0, 1, 20)
         elif x=="met":
-            bins = np.linspace(0, 400, 40)
+            bins = np.linspace(0, 600, 26)
         elif x=="ht":
-            bins = np.linspace(0, 4000, 40)
+            bins = np.linspace(0, 4000, 26)
         else:
             bins = None
         
@@ -81,7 +81,7 @@ def main():
         print(f"Num. of background events: {len(bkg_x)}")
         print("\n")
         
-        plot_quantity_list([sig_x, bkg_x], labels_list, title, xlabel, bins, x, args.outdir)
+        # plot_quantity_list([sig_x, bkg_x], labels_list, title, xlabel, bins, x, args.outdir)
         plot_quantity_list_ratio([sig_x, bkg_x], labels_list, title, xlabel, bins, x, args.outdir)
     
         if x=="ht":

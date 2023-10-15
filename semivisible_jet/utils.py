@@ -133,8 +133,9 @@ def plot_quantity_list_ratio(data_list, label_list, title, xlabel, bins=None, fi
     plt.show
     if len(figname)>0:
         plt.savefig(f"{outdir}/{figname}_ratio.png")
-    plt.close
+
     plt.clf()
+    plt.close(fig)
     
 
 def plot_correlation_hist(x, y, xlabel, ylabel, title, figname="", outdir="plots"):
@@ -147,7 +148,6 @@ def plot_correlation_hist(x, y, xlabel, ylabel, title, figname="", outdir="plots
     plt.show
     plt.savefig(f'{outdir}/correlation{figname}.png')
     plt.close
-    plt.clf()
     
 
 def plot_CR_SR(x, y, xlabel, ylabel, title, figname=""):
