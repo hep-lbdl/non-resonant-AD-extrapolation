@@ -58,7 +58,7 @@ def main():
     
     for x in variables:
         
-        if ("phi_" in x) or (x == "pT_j2") or ("eta" in x):
+        if ("phi_" in x) or ("eta" in x):
             continue
             
         ind_x = ind(variables, x)
@@ -66,12 +66,31 @@ def main():
         bkg_x = bkg[ind_x]
         title = f"{names[x]} distribution, min$p_{{\\rm T}} = {args.pTmin}$ GeV"
         xlabel = f"{names[x]} {units[x]}"
-        bins = np.linspace(0, 1, 20) if "tau" in x else None
+        
+        if "tau" in x:
+            bins = np.linspace(0, 1, 30)
+        elif x=="met":
+            bins = np.linspace(0, 400, 40)
+        elif x=="ht":
+            bins = np.linspace(0, 4000, 40)
+        else:
+            bins = None
+        
+        print(f"Plotting {x}")
+        print(f"Num. of signal events: {len(sig_x)}")
+        print(f"Num. of background events: {len(bkg_x)}")
+        print("\n")
         
         plot_quantity_list([sig_x, bkg_x], labels_list, title, xlabel, bins, x, args.outdir)
         plot_quantity_list_ratio([sig_x, bkg_x], labels_list, title, xlabel, bins, x, args.outdir)
     
+        if x=="ht":
+            ht_bkg = bkg_x
+
+        if x=="met":
+            met_bkg = bkg_x
     
+    plot_correlation_hist(ht_bkg, met_bkg, "HT (GeV)", "MET (GeV)", "MET vs HT in QCD dijet", figname="_met_ht", outdir=args.outdir)
     
     
 if __name__ == "__main__":
