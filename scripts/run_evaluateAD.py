@@ -81,13 +81,18 @@ def main():
     bkg_cond_SR = bkg_context[bkg_mask_SR]
     
     # Create training data set for classifier
-    input_feat_x = np.hstack([bkg_feat_SR, sig_feat_SR]).reshape(-1, 1)
+    if bkg_feat_SR.ndim == 1:
+        bkg_feat_SR = bkg_feat_SR.reshape(-1, 1)
+    if sig_feat_SR.ndim == 1:
+        sig_feat_SR =  sig_feat_SR.reshape(-1, 1)
+
+    input_feat_x = np.vstack([bkg_feat_SR, sig_feat_SR])
     input_cond_x = np.vstack([bkg_cond_SR, sig_cond_SR])
     input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
     # Create labels for classifier
-    bkg_feat_SR_label = np.zeros(bkg_feat_SR.shape)
-    sig_feat_SR_label = np.ones(sig_feat_SR.shape)
+    bkg_feat_SR_label = np.zeros(bkg_feat_SR.shape[0])
+    sig_feat_SR_label = np.ones(sig_feat_SR.shape[0])
     input_y = np.hstack([bkg_feat_SR_label, sig_feat_SR_label]).reshape(-1, 1)
     
     # Load the trained model
