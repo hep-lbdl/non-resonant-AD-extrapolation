@@ -106,10 +106,7 @@ def main():
     elif args.supervised:
         sig_percent_list = [1]*20
     else:
-        # sig_percent_list = [len(sig_context)/len(bkg_context)]
-        # sig_percent_list = np.logspace(np.log10(0.0005),np.log10(0.01),10).round(5)
-        sig_percent_list = np.logspace(np.log10(0.001),np.log10(0.01),3).round(5)
-    
+        sig_percent_list = np.logspace(np.log10(0.0005),np.log10(0.01),10).round(5)
     
     # Create signal injection dataset
     num = 0
