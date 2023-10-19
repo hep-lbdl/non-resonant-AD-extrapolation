@@ -10,6 +10,7 @@ from torch.nn import functional as F
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.preprocessing import StandardScaler
 
 from helpers.utils import EarlyStopping
 
@@ -42,6 +43,10 @@ class SimpleMAF:
         
         self.nfeat = num_features
         self.ncond = num_context
+        
+        # Scaler transform for preprocessing
+        self.scaler_x = StandardScaler()
+        self.scaler_c = StandardScaler()
  
         if base_dist is not None:
             self.base_dist = base_dist
@@ -69,33 +74,55 @@ class SimpleMAF:
     def to(self, device):
         self.flow.to(device)
         
+    def scaler_transform_x(self, input_x):
+        return self.scaler_x.transform(input_x)
+    
+    def scaler_transform_c(self, input_c):
+        return self.scaler_c.transform(input_c)
+
+    def scaler_inverse_x(self, input_x):
+        return self.scaler_x.inverse_transform(input_x)
+    
+    def scaler_inverse_c(self, input_c):
+        return self.scaler_c.inverse_transform(input_c)
+
     def np_to_torch(self, array):
     
         return torch.tensor(array.astype(np.float32))
     
     def process_data(self, data, batch_size, cond=None):
         
-        if self.nfeat != data.ndim:
+        if self.nfeat != data.shape[1]:
             raise RuntimeError("input data dimention doesn't match with number of features!")
         if self.nfeat == 1:
             data = data.reshape(-1, 1)
         
         if cond is not None:
-            if self.ncond != cond.ndim:
+            if self.ncond != cond.shape[1]:
                 raise RuntimeError("input cond dimention doesn't match with number of cond features!")
             if self.ncond == 1:
                 cond = cond.reshape(-1, 1)
             data = np.concatenate((data, cond), axis=1)
         
-        x_train, x_val = train_test_split(data, test_size=0.2, shuffle=True)
+        data_train, data_val = train_test_split(data, test_size=0.2, shuffle=True)
+
+        # Data preprocessing
+        x_train = self.scaler_x.fit_transform(data_train[:, :-self.ncond])
+        x_val = self.scaler_x.transform(data_val[:, :-self.ncond])
+
+        c_train = self.scaler_c.fit_transform(data_train[:, -self.ncond:])
+        c_val = self.scaler_c.transform(data_val[:, -self.ncond:])
         
-        train_data = torch.utils.data.DataLoader(self.np_to_torch(x_train), batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
-        val_data = torch.utils.data.DataLoader(self.np_to_torch(x_val), batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
+        data_train = np.concatenate((x_train, c_train), axis=1)
+        data_val = np.concatenate((x_val, c_val), axis=1)
+        
+        train_data = torch.utils.data.DataLoader(self.np_to_torch(data_train), batch_size=batch_size, shuffle=False, num_workers=8, pin_memory = True)
+        val_data = torch.utils.data.DataLoader(self.np_to_torch(data_val), batch_size=batch_size, shuffle=False, num_workers=8, pin_memory = True)
         
         return train_data, val_data
         
     
-    def train(self, data, cond=None, n_epochs=1000, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.005, save_model=False):
+    def train(self, data, cond=None, n_epochs=100, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.005, save_model=False):
         
         update_epochs = 1
         
@@ -107,7 +134,6 @@ class SimpleMAF:
         
         if early_stop:
             early_stopping = EarlyStopping(patience=patience, min_delta=min_delta)
-        
         
         train_data, val_data = self.process_data(data=data, batch_size=batch_size, cond=cond)
         
@@ -123,14 +149,16 @@ class SimpleMAF:
                     loss = -self.flow.log_prob(inputs=x_, context=c_).mean()
                 else:
                     x_ = data
-                    loss = -self.flow.log_prob(inputs=x_).mean()  
+                    loss = -self.flow.log_prob(inputs=x_).mean() 
+                
                 losses_batch_per_e.append(loss.detach().cpu().numpy())
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()  
 
             epochs.append(epoch)
-            losses.append(np.mean(losses_batch_per_e))
+            mean_loss = np.mean(losses_batch_per_e)
+            losses.append(mean_loss)
             
             if epoch % update_epochs == 0: # validation loss
                 with torch.no_grad():
@@ -156,7 +184,7 @@ class SimpleMAF:
                     if early_stop:
                         early_stopping(mean_val_loss)
             
-                    log.debug(f"Epoch: {epoch} - loss: {loss} - val loss: {val_loss}")
+            log.debug(f"Epoch: {epoch} - loss: {mean_loss} - val loss: {mean_val_loss}")
         
             if early_stop:
                 if early_stopping.early_stop:
@@ -181,6 +209,10 @@ class SimpleMAF:
                     
 
     def sample(self, num_samples, cond=None):
+        cond = self.scaler_c.transform(cond)
         cond = self.np_to_torch(cond).to(self.device)
-        samples = self.flow.sample(num_samples=num_samples, context=cond)
-        return samples.detach().cpu().numpy()
+        samples_feat = self.flow.sample(num_samples=num_samples, context=cond)
+        samples = samples_feat.detach().cpu().numpy()
+        samples = samples.reshape(samples.shape[0], samples.shape[-1])
+        unscaled_samples = self.scaler_x.inverse_transform(samples)
+        return unscaled_samples
