@@ -37,9 +37,9 @@ parser.add_argument(
 parser.add_argument(
     '-m', 
     "--model",
-    action="store",
-    default=None,
-    help='Load trained MAF model from path.'
+    action="store_true",
+    default=False,
+    help='Load best trained MAF model.'
 )
 parser.add_argument(
     "--oversample",
@@ -120,20 +120,28 @@ def main():
     nfeat = data_feat_CR.shape[1]
     ncond = data_cond_CR.shape[1]
     num_samples = 1 # can set to higher values
-    
+    load_model = args.model
+
+
     if args.samples is None:
         
-        if args.model is None:        
+        if load_model:
+            # MAF model path
+            model_path = f"{args.outdir}/MAF_final_model.pt"
+            # Check if a model exist
+            if os.path.isfile(model_path):
+                # Load the trained model
+                logging.info("Loading a trained MAF...")
+                MAF = torch.load(model_path)
+                MAF.to(device)
+            else:
+                load_model = False
+
+        if not load_model:        
             # Train a MAF for density estimation
             logging.info("Training a MAF to learn P(x|m)...")
             MAF = SimpleMAF(num_features=nfeat, num_context=ncond, device=device)
             MAF.train(data=data_feat_CR, cond=data_cond_CR, outdir=args.outdir, save_model=True)
-
-        else:
-            # Load the trained model
-            logging.info("Loading a trained MAF...")
-            MAF = torch.load(f"{args.model}")
-            MAF.to(device)
         
         # sample from MAF
         n_sample = 1 if args.oversample else 1
@@ -143,10 +151,9 @@ def main():
             # sample CR for debugging
             pred_bkg_CR = MAF.sample(n_sample, MC_cond_CR)
         
-        log.debug(f"MAF generated {len(pred_bkg_SR)} bkg events in the SR. Oversampling is not avaliable.")
-
         # save generated samples
         np.savez(f"{args.outdir}/samples_data_feat_SR.npz", samples = pred_bkg_SR)
+        log.debug(f"MAF generated {pred_bkg_SR.shape[0]} bkg events in the SR. Oversampling is not avaliable.")
         
     else:
         # Load samples

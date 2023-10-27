@@ -37,9 +37,9 @@ parser.add_argument(
 parser.add_argument(
     '-m', 
     "--model",
-    action="store",
-    default=None,
-    help='Load trained MAF model from path.'
+    action="store_true",
+    default=False,
+    help='Load best trained MAF model.'
 )
 parser.add_argument(
     "-o",
@@ -104,26 +104,34 @@ def main():
     nfeat = data_feat_CR.shape[1]
     ncond = data_cond_CR.shape[1]
     num_samples = 1 # can set to higher values
+    load_model = args.model
     
 
     if args.samples is None:
         
-        if args.model is None:
-            # Train base density flow.
-            logging.info("Training a base density flow to learn P_MC(x|m)...")
-            base_density_flow = SimpleMAF(num_features=nfeat, num_context=ncond, device=device)
-            base_density_flow.train(data=MC_feature, cond=MC_context, outdir=args.outdir)
+        if load_model:
+            # MAF model path
+            trasport_model_path = f"{args.outdir}/MAF_final_model.pt"
+            # Check if a model exist
+            if os.path.isfile(model_path):
+                # Load the trained model
+                logging.info("Loading a trained MAF transport flow ...")
+                transport_flow = torch.load(model_path)
+                transport_flow.to(device)
+            else:
+                load_model = False
 
+        # Train base density flow.
+        logging.info("Training a base density flow to learn P_MC(x|m)...")
+        base_density_flow = SimpleMAF(num_features=nfeat, num_context=ncond, device=device)
+        base_density_flow.train(data=MC_feature, cond=MC_context, outdir=args.outdir)
+        
+        if not load_model:
             # Train trasport flow.
             logging.info("Training a transport flow to map P_MC(x|m) to P_data(x|m)...")
             transport_flow = SimpleMAF(num_features = nfeat, num_context=ncond, base_dist=base_density_flow.flow, device=device)
             transport_flow.train(data=data_feat_CR, cond=data_cond_CR, outdir=args.outdir, save_model=True, min_delta=0.01)
         
-        else:
-            # Load the trained model
-            logging.info("Loading a trained MAF transport_flow...")
-            transport_flow = torch.load(f"{args.model}")
-            transport_flow.to(device)
         
         # Standard scaling
         MC_feat_SR_scaled = transport_flow.scaler_transform_x(MC_feat_SR)

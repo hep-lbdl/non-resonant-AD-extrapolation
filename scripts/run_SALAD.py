@@ -4,6 +4,7 @@ from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
 from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
+from semivisible_jet.utils import *
 from sklearn.model_selection import train_test_split
 import torch
 import os
@@ -113,20 +114,22 @@ def main():
     bkg_cond_SR = bkg_context[bkg_mask_SR]
 
     # define useful variables
-    nfeat = data_feat_CR.ndim
-    ncond = data_cond_CR.ndim
+    nfeat = data_feat_CR.shape[1]
+    ncond = data_cond_CR.shape[1]
     num_samples = 1 # can set to higher values
 
     if args.weights is None:
         
         # create training data set for classifier
+        input_feat_CR = np.concatenate([MC_feat_CR, data_feat_CR], axis=0)
+        if input_feat_CR.ndim==1:
+            input_feat_CR  = input_feat_CR.reshape(-1,1) 
         input_cond_CR = np.concatenate([MC_cond_CR, data_cond_CR], axis=0)
-        input_feat_CR = np.concatenate([MC_feat_CR, data_feat_CR], axis=0).reshape(-1,1)
         input_x_train_CR = np.concatenate([input_cond_CR, input_feat_CR], axis=1)
         
         # create labels for classifier
-        MC_CR_label = np.zeros(len(MC_cond_CR)).reshape(-1,1)
-        data_CR_label = np.ones(len(data_cond_CR)).reshape(-1,1)
+        MC_CR_label = np.zeros(MC_cond_CR.shape[0]).reshape(-1,1)
+        data_CR_label = np.ones(data_cond_CR.shape[0]).reshape(-1,1)
         
         input_y_train_CR = np.concatenate([MC_CR_label, data_CR_label], axis=0)
         
@@ -134,7 +137,7 @@ def main():
             # train reweighting classifier
             log.info("Training a classifer for reweighting...")
             
-            NN_reweight_train = Classifier(n_inputs=nfeat + ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/reweighting")
+            NN_reweight_train = Classifier(n_inputs=nfeat + ncond, layers=[64,64,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/reweighting")
             NN_reweight_train.train(input_x_train_CR, input_y_train_CR, save_model=True)
             
         # load the best trained model
@@ -145,13 +148,18 @@ def main():
         NN_reweight.to(device)
         
         # evaluate classifier and calculate the weights
-        input_x_test = np.concatenate([MC_cond_SR, MC_feat_SR.reshape(-1,1)], axis=1)
+        if MC_feat_SR.ndim == 1:
+            MC_feat_SR = MC_feat_SR.reshape(-1,1)
+        input_x_test = np.concatenate([MC_cond_SR, MC_feat_SR], axis=1)
         
         w_SR = NN_reweight.evaluation(input_x_test)
         w_SR = (w_SR/(1.-w_SR)).flatten()
         
         # make validation plots in CR
-        input_x_test_CR = np.concatenate([MC_cond_CR, MC_feat_CR.reshape(-1,1)], axis=1)
+        if MC_feat_CR.ndim == 1:
+            MC_feat_CR = MC_feat_CR.reshape(-1,1)
+        input_x_test_CR = np.concatenate([MC_cond_CR, MC_feat_CR], axis=1)
+
         w_CR = NN_reweight.evaluation(input_x_test_CR)
         w_CR = (w_CR/(1.-w_CR)).flatten()
 
@@ -161,24 +169,34 @@ def main():
         os.makedirs(f"{args.outdir}/reweighting_plots", exist_ok=True)
 
         # plot reweigted distribution
-        for i in [0,1]:
-
+        variables = ["ht", "met", "m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
+        names = []
+        units = []
+        for var in variables:
+            names.append(name_map()[var])
+            units.append(unit_map()[var])
+        
+        ymaxs = [3000, 600, 6000] + [1]*4
+        
+        for i in range(ncond):
+            
             hlist = [MC_cond_SR[:,i], MC_cond_SR[:,i], bkg_cond_SR[:,i], MC_cond_CR[:,i], MC_cond_CR[:,i], data_cond_CR[:,i]]
             weights = [None, w_SR, None, None, w_CR, None]
-            labels = ["MC SR", "reweighted MC SR", "true bkg SR", "MC CR", "reweighted MC CR", "data CR"]
+            labels = [f"MC SR (Num Events: {len(MC_cond_SR[:,i]):.1e})", "reweighted MC SR", "true bkg SR", f"MC CR (Num Events: {len(MC_cond_CR[:,i]):.1e})", "reweighted MC CR", "data CR"]
             htype = ["step", "stepfilled", "step"]*2
             lstyle = ["-"]*3 + ["--"]*3
-            plot_kwargs = {"title":f"Reweighted MC vs data for m{i+1}, S/B={sig_percent*1e2:.3f}%", "name":f"MC vs data reweighting m{i+1}", "xlabel":f"m{i+1}", "ymin":-10, "ymax":10, "outdir":f"{args.outdir}/reweighting_plots"}
+            plot_kwargs = {"title":f"Reweighted MC vs data for {names[i]}, S/B={sig_percent*1e2:.3f}%", "name":f"MC vs data reweighting {variables[i]}", "xlabel":f"{names[i]} {units[i]}", "ymin":0, "ymax":ymaxs[i], "outdir":f"{args.outdir}/reweighting_plots"}
             plot_multi_dist(hlist, labels, weights=weights, htype=htype, lstyle=lstyle, **plot_kwargs)
 
+        for i in range(nfeat):
 
-        hlist = [MC_feat_SR, MC_feat_SR, bkg_feat_SR, MC_feat_CR, MC_feat_CR, data_feat_CR]
-        weights = [None, w_SR, None, None, w_CR, None]
-        labels = ["MC SR", "reweighted MC SR", "true bkg SR", "MC CR", "reweighted MC CR", "data CR"]
-        htype = ["step", "stepfilled", "step"]*2
-        lstyle = ["-"]*3 + ["--"]*3
-        plot_kwargs = {"title":f"Reweighted MC vs data for x, S/B={sig_percent*1e2:.3f}%", "name":"MC vs data reweighting x", "xlabel":"x", "ymin":-10, "ymax":10, "outdir":f"{args.outdir}/reweighting_plots"}
-        plot_multi_dist(hlist, labels, weights=weights, htype=htype, lstyle=lstyle, **plot_kwargs)        
+            hlist = [MC_feat_SR[:,i], MC_feat_SR[:,i], bkg_feat_SR[:,i], MC_feat_CR[:,i], MC_feat_CR[:,i], data_feat_CR[:,i]]
+            weights = [None, w_SR, None, None, w_CR, None]
+            labels = [f"MC SR (Num Events: {len(MC_feat_SR[:,i]):.1e})", "reweighted MC SR", "true bkg SR", f"MC CR (Num Events: {len(MC_feat_CR[:,i]):.1e})", "reweighted MC CR", "data CR"]
+            htype = ["step", "stepfilled", "step"]*2
+            lstyle = ["-"]*3 + ["--"]*3
+            plot_kwargs = {"title":f"Reweighted MC vs data for {names[i+2]}, S/B={sig_percent*1e2:.3f}%", "name":f"MC vs data reweighting {variables[i+2]}", "xlabel":f"{names[i+2]} {units[i+2]}", "ymin":0, "ymax":ymaxs[i+2], "outdir":f"{args.outdir}/reweighting_plots"}
+            plot_multi_dist(hlist, labels, weights=weights, htype=htype, lstyle=lstyle, **plot_kwargs)
 
         
     else:
@@ -191,15 +209,17 @@ def main():
     
     # create training data set for classifier
     input_cond_SR = np.concatenate([MC_cond_SR, data_cond_SR], axis=0)
-    input_feat_SR = np.concatenate([MC_feat_SR, data_feat_SR], axis=0).reshape(-1,1)
+    input_feat_SR = np.concatenate([MC_feat_SR, data_feat_SR], axis=0)
+    if input_feat_SR.ndim == 1:
+        input_feat_SR.reshape(-1,1)
     input_x_train_SR = np.concatenate([input_cond_SR, input_feat_SR], axis=1)
     
     # create labels for classifier
-    MC_SR_label = np.zeros(len(MC_cond_SR)).reshape(-1,1)
-    data_SR_label = np.ones(len(data_cond_SR)).reshape(-1,1)
+    MC_SR_label = np.zeros(MC_cond_SR.shape[0]).reshape(-1,1)
+    data_SR_label = np.ones(data_cond_SR.shape[0]).reshape(-1,1)
     input_y_train_SR = np.concatenate([MC_SR_label, data_SR_label], axis=0)
 
-    w_data = np.array([1.]*len(data_feat_SR))
+    w_data = np.array([1.]*data_feat_SR.shape[0])
     input_weights = np.hstack([w_SR, w_data]).reshape(-1, 1)
     
     
