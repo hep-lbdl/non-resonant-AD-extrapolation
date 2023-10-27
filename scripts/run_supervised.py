@@ -83,26 +83,28 @@ def main():
     bkg_cond_SR = bkg_context[bkg_mask_SR]
 
     # define useful variables
-    nfeat = sig_feat_SR.ndim
-    ncond = sig_cond_SR.ndim
+    nfeat = sig_feat_SR.shape[1]
+    ncond = sig_cond_SR.shape[1]
 
-    pred_bkg_SR = bkg_feat_SR.flatten()
+    pred_bkg_SR = bkg_feat_SR.flatten() if bkg_feat_SR.ndim==1 else bkg_feat_SR
     
     log.info("Training a classifer for signal vs background...")
     
     # create training data set for classifier
-    input_feat_x = np.hstack([pred_bkg_SR, sig_feat_SR]).reshape(-1, 1)
-    input_cond_x = np.vstack([bkg_cond_SR, sig_cond_SR])
+    input_feat_x = np.concatenate([pred_bkg_SR, sig_feat_SR], axis=0)
+    if input_feat_x.ndim==1:
+        input_feat_x.reshape(-1, 1)
+    input_cond_x = np.concatenate([bkg_cond_SR, sig_cond_SR], axis=0)
     input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
     # create labels for classifier
-    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
-    sig_feat_SR_label = np.ones(sig_feat_SR.shape)
+    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape[0])
+    sig_feat_SR_label = np.ones(sig_feat_SR.shape[0])
     input_y = np.hstack([pred_bkg_SR_label, sig_feat_SR_label]).reshape(-1, 1)
     
     # generate weights
-    w_bkg = np.array([1.]*len(pred_bkg_SR))
-    w_sig = np.array([1.]*len(sig_feat_SR))
+    w_bkg = np.array([1.]*pred_bkg_SR.shape[0])
+    w_sig = np.array([1.]*sig_feat_SR.shape[0])
     input_weights = np.hstack([w_bkg, w_sig]).reshape(-1, 1)
     
     # Train the AD Classifier

@@ -87,22 +87,24 @@ def main():
     bkg_cond_SR = bkg_context[bkg_mask_SR]
 
     # define useful variables
-    nfeat = data_feat_CR.ndim
-    ncond = data_cond_CR.ndim
+    nfeat = data_feat_CR.shape[1]
+    ncond = data_cond_CR.shape[1]
     num_samples = 1 # can set to higher values
 
-    pred_bkg_SR = bkg_feat_SR.flatten()
+    pred_bkg_SR = bkg_feat_SR.flatten() if bkg_feat_SR.ndim==1 else bkg_feat_SR
     
     log.info("Training a classifer for signal vs background...")
     
     # create training data set for classifier
-    input_feat_x = np.hstack([pred_bkg_SR, data_feat_SR]).reshape(-1, 1)
-    input_cond_x = np.vstack([bkg_cond_SR, data_cond_SR])
+    input_feat_x = np.concatenate([pred_bkg_SR, data_feat_SR], axis=0)
+    if input_feat_x.ndim == 1:
+        input_feat_x.reshape(-1, 1)
+    input_cond_x = np.concatenate([bkg_cond_SR, data_cond_SR], axis=0)
     input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
     # create labels for classifier
-    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
-    data_feat_SR_label = np.ones(data_feat_SR.shape)
+    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape[0])
+    data_feat_SR_label = np.ones(data_feat_SR.shape[0])
     input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
 
     # Train the AD Classifier
