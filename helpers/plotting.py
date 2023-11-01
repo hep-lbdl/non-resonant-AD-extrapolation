@@ -3,6 +3,7 @@ from math import pi
 from fractions import Fraction
 import matplotlib.pyplot as plt
 from scipy.special import kl_div
+from datetime import datetime
 import os
 
 os.makedirs(os.path.dirname("./plots"), exist_ok=True)
@@ -22,7 +23,7 @@ def plot_gen_full_bkg(samples, x1, x2):
     plt.legend()
     plt.title("Generated full bkg distribution from training full bkg samples.")
     plt.show
-    plt.savefig('plots/gen_full_bkg.pdf')
+    plt.savefig('plots/gen_full_bkg.png')
     plt.close
     
 def plot_gen_SRfromCR_bkg(samples, x1, x2):
@@ -36,7 +37,7 @@ def plot_gen_SRfromCR_bkg(samples, x1, x2):
     plt.legend()
     plt.title("Generated full bkg distribution from training CR samples.")
     plt.show
-    plt.savefig('plots/gen_SRfromCR_bkg.pdf')
+    plt.savefig('plots/gen_SRfromCR_bkg.png')
     plt.close
     
 def plot_gen_SR_bkg_in_y_random(samples, Y_SR):
@@ -48,7 +49,7 @@ def plot_gen_SR_bkg_in_y_random(samples, Y_SR):
     plt.title("Generated bkg distribution in x = random.")
     plt.legend()
     plt.show
-    plt.savefig('plots/gen_SR_bkg_in_y_random.pdf')
+    plt.savefig('plots/gen_SR_bkg_in_y_random.png')
     plt.close
     
 def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
@@ -60,7 +61,7 @@ def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
     plt.title(f"Generated bkg in x = N(${k}\\alpha$+{q}$\\beta$, 1)")
     plt.legend()
     plt.show
-    plt.savefig(f'plots/gen_SR_bkg_in_y_cond{k*10}.pdf')
+    plt.savefig(f'plots/gen_SR_bkg_in_y_cond{k*10}.png')
     plt.close
 
 def pi_to_string(theta):
@@ -103,11 +104,31 @@ def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, weights1=None
         ax1.set_xlabel("x")
         plt.legend(loc='upper left', fontsize = 9)
         plt.show
-        plot_name = f"{outdir}/{Y_label}_{Y_label2}_{tag}.pdf"
+        plot_name = f"{outdir}/{Y_label}_{Y_label2}_{tag}.png"
         plt.savefig(plot_name.replace(" ", "_"))
         plt.close()
     else:
         print("Wrong input lists!")
+        
+        
+def plot_kl_div_phys(x1, x2, label1, label2, w1=None, w2=None, name="feature", tag = "", bins=50, outdir="plots", *args, **kwargs):
+    
+    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    
+    fig, ax1 = plt.subplots(figsize=(8,6))
+    c0, cbins, _ = ax1.hist(x1, bins = bins, density = True, weights=w1, histtype='step', color=colors[2], label=label1)
+    c1, cbins, _ = ax1.hist(x2, bins = bins, density = True, weights=w2, histtype='stepfilled', alpha = 0.3, color=colors[2], label=label2)
+    kl_div = get_kl_div(c0,c1)
+    ax1.hist(x2, bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[2], label=f"kl div={kl_div:.3f}")
+    ax1.set_title(f"Background in {name}, truth vs generated", fontsize = 14)
+    ax1.set_xlabel(name)
+    plt.legend(fontsize = 10)
+    plt.show
+    plot_name = f"{outdir}/{label1}_{label2}_{tag}.png"
+    plt.savefig(plot_name.replace(" ", "_"))
+    plt.close()
+        
+        
 
 def plot_kl_div_data_reweight(data_train, data_true, data_gen, weights, data_gen_from_truth=None, MC_true=None, name="data_reweight", title="", ymin=-6, ymax=10, outdir="./", *args, **kwargs):
     
@@ -148,7 +169,7 @@ def plot_kl_div_data_reweight(data_train, data_true, data_gen, weights, data_gen
     ax1.set_xlabel("x")
     plt.legend(loc='upper left', fontsize = 9)
     plt.show
-    plot_name = f"{outdir}/{name}.pdf"
+    plot_name = f"{outdir}/{name}.png"
     plt.savefig(plot_name.replace(" ", "_"))
     plt.close()
   
@@ -190,9 +211,9 @@ def plot_multi_dist(hists, labels, weights=None, htype=None, lstyle=None, title=
             
         ax1.set_title(f"{title}", fontsize = 14)
         ax1.set_xlabel(xlabel)
-        plt.legend(loc='upper left', fontsize = 9)
+        plt.legend(loc='upper right', fontsize = 9)
         plt.show
-        plot_name = f"{outdir}/{name}.pdf"
+        plot_name = f"{outdir}/{name}.png"
         plt.savefig(plot_name.replace(" ", "_"))
         plt.close()
     else:
@@ -218,7 +239,7 @@ def plot_multi_data_MC_dist(data_list, MC_list, labels, weights=None, name="data
         ax1.set_xlabel(xlabel)
         plt.legend(loc='upper left', fontsize = 9)
         plt.show
-        plot_name = f"{outdir}/{name}.pdf"
+        plot_name = f"{outdir}/{name}.png"
         plt.savefig(plot_name.replace(" ", "_"))
         plt.close()
     else:
@@ -245,7 +266,35 @@ def plot_sig_bkg_dist(sig_list, bkg_hist, labels, name="sig_vs_bkg", title="", x
         ax1.set_xlabel(xlabel)
         plt.legend(loc='upper left', fontsize = 9)
         plt.show
-        plot_name = f"{outdir}/{name}.pdf"
+        plot_name = f"{outdir}/{name}.png"
+        plt.savefig(plot_name.replace(" ", "_"))
+        plt.close()
+    else:
+        print("Wrong input lists!")
+
+def plot_all_variables(sig_list, bkg_list, xlabels, labels=["sig", "bkg"], name="sig_vs_bkg", title="", xlabel="x", outdir="./", *args, **kwargs):
+    cbkg = 'royalblue'
+    csig = 'brown'
+    
+    N = len(sig_list)
+    print(f"Plotting {N} variables")
+    
+    if N==len(xlabels):
+        fig, ax1 = plt.subplots(1, N, figsize=(6*N,5))
+        ax1[0].set_ylabel("Events (A.U.)")
+        for i in range(N):
+            xmin = np.min(np.hstack([bkg_list[i], sig_list[i]]))
+            xmax = np.max(np.hstack([bkg_list[i], sig_list[i]]))
+            bins = np.linspace(xmin, xmax, 50)
+            ax1[i].hist(sig_list[i], bins = bins, density = True, histtype='step', ls= "-", color=csig, label=labels[1])
+            ax1[i].hist(bkg_list[i], bins = bins, density = True, histtype='stepfilled', ls= "-", color=cbkg, alpha=0.5, label=labels[0])
+            ax1[i].set_xlabel(xlabels[i])
+            ax1[i].set_yticks([])
+            ax1[i].legend(loc='upper right', fontsize = 9)
+
+        plt.show
+        plt.title(title)
+        plot_name = f"{outdir}/{name}.png"
         plt.savefig(plot_name.replace(" ", "_"))
         plt.close()
     else:
@@ -255,7 +304,7 @@ def plot_SIC(tpr, fpr, label, outdir="./"):
     
     tpr = np.array(tpr)
     fpr = np.array(fpr)
-    
+
     SIC = tpr[fpr>0] / np.sqrt(fpr[fpr>0])
     
     fig, ax = plt.subplots(1, 1, figsize=(7, 5))
@@ -264,9 +313,12 @@ def plot_SIC(tpr, fpr, label, outdir="./"):
     ax.set_xlabel("Signal Efficiency (TPR)")
     ax.set_title(f"Significant improvement characteristic")
     # ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
-    fname = f"{outdir}/SIC.png"
+    timestamp = datetime.now().strftime("%m-%d-%H%M%S")
+    fname = f"{outdir}/SIC_{timestamp}.png"
     ax.legend()
+    plt.show
     fig.savefig(fname)
+    plt.close()
     
 def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, name="", outdir="./"):
     
@@ -291,6 +343,7 @@ def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, name="", outdir="./"):
     fname = f"{outdir}/SIC_sig_inj.png"
     ax.legend()
     fig.savefig(fname)
+    plt.close()
 
     
 def plot_max_SIC(sig_percent, max_SIC, label="", outdir="./"):
@@ -306,6 +359,7 @@ def plot_max_SIC(sig_percent, max_SIC, label="", outdir="./"):
     plt.legend()
     plt.title(f"max SIC per signal significance")
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
+    plt.close()
     
 
 def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
@@ -325,6 +379,7 @@ def plot_multi_max_SIC(sig_percent, max_SIC_list, label_list, outdir="./"):
     plt.legend()
     plt.title(f"Maximum significance improvement of each method")
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
+    plt.close()
     
 
 def plot_avg_max_SIC(sig_percent, max_SIC_list, lb_list, ub_list, label_list, outdir="./", title="Maximum significance improvement", tag=""):
@@ -346,4 +401,5 @@ def plot_avg_max_SIC(sig_percent, max_SIC_list, lb_list, ub_list, label_list, ou
     plt.legend(edgecolor='none', facecolor='none')
     plt.title(f"{title}")
     plt.savefig(f"{outdir}/avg_maxSIC{tag}.png")
+    plt.close()
     

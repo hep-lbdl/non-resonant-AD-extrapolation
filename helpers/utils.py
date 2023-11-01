@@ -3,6 +3,7 @@ import torch
 import logging
 from sklearn.metrics import roc_auc_score, roc_curve
 import matplotlib.pyplot as plt
+from datetime import datetime
 log = logging.getLogger("run")
 
 
@@ -27,26 +28,37 @@ def equalize_weights(y_train, y_val, weights_train, weights_val):
 
 
 def get_roc_curve(outputs, y_test, outdir="./", model_name="", weights=None):
-
-    auc = roc_auc_score(y_test, outputs)
-    fpr, tpr, _ = roc_curve(y_test, outputs, sample_weight=weights)
+    
+    y_true = y_test.flatten()
+    y_score = outputs.flatten()
+    fpr, tpr, _ = roc_curve(y_true, y_score, sample_weight=weights)
     np.save(f"{outdir}/fpr{model_name}.npy", fpr)
     np.save(f"{outdir}/tpr{model_name}.npy", tpr)
-    
-    if auc < 0.5:
-        auc = 1.0 - auc
+    auc = roc_auc_score(y_true, y_score)
 
-    fig, ax = plt.subplots(1, 1, figsize=(7, 5))
-    ax.plot(fpr, tpr, label=f"AUC: {auc:.3f}")
-    ax.set_xlabel("FPR")
-    ax.set_ylabel("TPR")
-    ax.set_title(f"ROC curve")
-    ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
-    fname = f"{outdir}/roc{model_name}.png"
-    ax.legend()
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 9), gridspec_kw={'height_ratios': [2, 1]})
+    
+    ax1.plot(fpr, tpr, '-x', label=f"AUC: {auc:.3f}")
+    ax1.set_xlabel("FPR")
+    ax1.set_ylabel("TPR")
+    ax1.set_title(f"ROC curve")
+    ax1.plot([0,1],[0,1],color="gray",ls=":",label="Random")
+    ax1.legend()
+
+    bins = np.linspace(0, 1, 11)
+    bkg_score = y_score[y_true==0]
+    sig_score = y_score[y_true==1]
+    ax2.hist(bkg_score , histtype="stepfilled", bins=bins, density=True, alpha=0.5, label=f"bkg score")
+    ax2.hist(sig_score , histtype="step", bins=bins, density=True, label=f"sig score")
+    ax2.set_xlabel("NN score")
+    ax2.set_yticks([])
+    ax2.legend()
+
+    timestamp = datetime.now().strftime("%m-%d-%H%M%S")
+    fname = f"{outdir}/roc{model_name}_{timestamp}.png"
     fig.savefig(fname)
 
-    log.info(f"AUC: {auc}.")
+    log.info(f"AUC: {auc:.3f}.")
     
 
 

@@ -20,6 +20,7 @@ setup(name='non-resonant-AD',
               'plt-multi-SIC = scripts.plot_multi_max_SIC:main',
               'gen-toy-ds = scripts.gen_siginj_toy_dataset:main',
               'gen-phys-ds = scripts.gen_siginj_phys_dataset:main',
+              'gen-phys-ts = scripts.gen_siginj_phys_testset:main',
           ],
       },
       )

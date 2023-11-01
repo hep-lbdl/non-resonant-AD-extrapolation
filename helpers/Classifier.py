@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -228,13 +229,13 @@ class Classifier():
         plt.xlabel("number of epochs")
         plt.ylabel("loss")
         plt.legend()
-        plt.show
-        plt.savefig(f"{self.outdir}/classfier_loss.png")
+        timestamp = datetime.now().strftime("%m-%d-%H%M%S")
+        plt.savefig(f"{self.outdir}/classfier_loss_{timestamp}.png")
         plt.close()
         
 
     
-    def evaluation(self, X_test,y_test=None, weights=None, model_name=""):
+    def evaluation(self, X_test, y_test=None, weights=None, model_name=""):
         
         self.model.eval()
         

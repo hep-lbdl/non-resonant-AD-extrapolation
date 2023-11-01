@@ -65,13 +65,13 @@ def main():
     # data and bkg
     data_feature = inputs["data_feature"]
     data_context = inputs["data_context"]
-    bkg_feature = inputs["bkg_feature"]
-    bkg_context = inputs["bkg_context"]
+    bkg_feature = inputs["ideal_bkg_feature"]
+    bkg_context = inputs["ideal_bkg_context"]
     # SR and CR masks
     data_mask_CR = inputs["data_mask_CR"]
     data_mask_SR = inputs["data_mask_SR"]
-    bkg_mask_CR = inputs["bkg_mask_CR"]
-    bkg_mask_SR = inputs["bkg_mask_SR"]
+    bkg_mask_CR = inputs["ideal_bkg_mask_CR"]
+    bkg_mask_SR = inputs["ideal_bkg_mask_SR"]
     inputs.close()
 
     # Get feature and contexts from data
@@ -89,21 +89,18 @@ def main():
     # define useful variables
     nfeat = data_feat_CR.shape[1]
     ncond = data_cond_CR.shape[1]
-    num_samples = 1 # can set to higher values
-
-    pred_bkg_SR = bkg_feat_SR.flatten() if bkg_feat_SR.ndim==1 else bkg_feat_SR
     
     log.info("Training a classifer for signal vs background...")
     
     # create training data set for classifier
-    input_feat_x = np.concatenate([pred_bkg_SR, data_feat_SR], axis=0)
+    input_feat_x = np.concatenate([bkg_feat_SR, data_feat_SR], axis=0)
     if input_feat_x.ndim == 1:
         input_feat_x.reshape(-1, 1)
     input_cond_x = np.concatenate([bkg_cond_SR, data_cond_SR], axis=0)
     input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
     
     # create labels for classifier
-    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape[0])
+    pred_bkg_SR_label = np.zeros(bkg_feat_SR.shape[0])
     data_feat_SR_label = np.ones(data_feat_SR.shape[0])
     input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
 
@@ -115,8 +112,8 @@ def main():
         # train classifier for x, m1 and m2
         log.info(f"Training a classifer for signal vs background...")
         
-        NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512, model_name=f"{i}")
+        NN = Classifier(n_inputs=nfeat+ncond, layers=[32, 32], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=256, model_name=f"{i}")
 
 
     log.info("Ideal AD done!")
