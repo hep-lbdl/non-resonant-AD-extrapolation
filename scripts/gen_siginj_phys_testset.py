@@ -75,9 +75,9 @@ def main():
     
     # Create context array
     var_names = ["ht", "met", "m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
+    sig_events = sort_event_arr(var_names, variables, sig)
     bkg1_events = sort_event_arr(var_names, variables, bkg1)
     bkg2_events = sort_event_arr(var_names, variables, bkg2)
-    sig_events = sort_event_arr(var_names, variables, sig)
     
     # Add bkg datasets
     bkg_events = np.concatenate([bkg1_events, bkg2_events], axis=0)
@@ -87,24 +87,29 @@ def main():
     MET_cut = 75    # In SR, MET > 75 GeV
     
     bkg_mask_SR = (bkg_events[:, 0] > HT_cut) & (bkg_events[:, 1] > MET_cut)
-
-    sig_mask_SR = (sig_events[:, 0] > HT_cut) & (sig_events[:, 1] > MET_cut)
   
-    # n_sig = bkg1.shape[0]
-    # selected_sig_indices = np.random.choice(sig.shape[0], size=n_sig, replace=False)
-    # selected_sig = sig[selected_sig_indices, :]
+    # Select small number of signal for testing
+    n_sig = bkg_events[bkg_mask_SR].shape[0]
+    selected_sig_indices = np.random.choice(sig_events.shape[0], size=n_sig, replace=False)
+    selected_sig = sig_events[selected_sig_indices, :]
     
+    sig_mask_SR = (selected_sig[:, 0] > HT_cut) & (selected_sig[:, 1] > MET_cut)
+    
+    # SR events
+    bkg_events_SR = bkg_events[bkg_mask_SR]
+    sig_events_SR = selected_sig[sig_mask_SR]
+
     # Print dataset information
-    print(f"Test dataset: N sig={len(sig_events)}, N bkg={len(bkg_events)}")
-    
+    print(f"Test dataset in SR: N sig={len(sig_events_SR)}, N bkg={len(bkg_events_SR)}")
+
     # Plot varibles
-    sig_list = sig_events.T
-    bkg_list = bkg_events.T
-    plot_kwargs = {"name":f"sig_vs_bkg_testset", "title":f"N sig={len(sig_events)}, N bkg={len(bkg_events)}", "outdir":args.outdir}
+    sig_list = sig_events_SR.T
+    bkg_list = bkg_events_SR.T
+    plot_kwargs = {"name":f"sig_vs_bkg_testset", "title":f"N sig={len(sig_events_SR)}, N bkg={len(bkg_events_SR)}", "outdir":args.outdir}
     plot_all_variables(sig_list, bkg_list, var_names, **plot_kwargs)
 
     # Save dataset
-    np.savez(f"./{args.outdir}/test_inputs.npz", bkg_events=bkg_events, sig_events = sig_events, bkg_mask_SR=bkg_mask_SR, sig_mask_SR = sig_mask_SR)
+    np.savez(f"./{args.outdir}/test_inputs.npz", bkg_events_SR=bkg_events_SR, sig_events_SR=sig_events_SR)
     
         
     print("Finished generating dataset.")

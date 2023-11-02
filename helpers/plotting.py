@@ -273,8 +273,8 @@ def plot_sig_bkg_dist(sig_list, bkg_hist, labels, name="sig_vs_bkg", title="", x
         print("Wrong input lists!")
 
 def plot_all_variables(sig_list, bkg_list, xlabels, labels=["sig", "bkg"], name="sig_vs_bkg", title="", xlabel="x", outdir="./", *args, **kwargs):
-    cbkg = 'royalblue'
     csig = 'brown'
+    cbkg = 'royalblue'
     
     N = len(sig_list)
     print(f"Plotting {N} variables")
@@ -286,8 +286,8 @@ def plot_all_variables(sig_list, bkg_list, xlabels, labels=["sig", "bkg"], name=
             xmin = np.min(np.hstack([bkg_list[i], sig_list[i]]))
             xmax = np.max(np.hstack([bkg_list[i], sig_list[i]]))
             bins = np.linspace(xmin, xmax, 50)
-            ax1[i].hist(sig_list[i], bins = bins, density = True, histtype='step', ls= "-", color=csig, label=labels[1])
-            ax1[i].hist(bkg_list[i], bins = bins, density = True, histtype='stepfilled', ls= "-", color=cbkg, alpha=0.5, label=labels[0])
+            ax1[i].hist(sig_list[i], bins = bins, density = False, histtype='step', ls= "-", color=csig, label=labels[0])
+            ax1[i].hist(bkg_list[i], bins = bins, density = False, histtype='stepfilled', ls= "-", color=cbkg, alpha=0.5, label=labels[1])
             ax1[i].set_xlabel(xlabels[i])
             ax1[i].set_yticks([])
             ax1[i].legend(loc='upper right', fontsize = 9)
@@ -316,7 +316,6 @@ def plot_SIC(tpr, fpr, label, outdir="./"):
     timestamp = datetime.now().strftime("%m-%d-%H%M%S")
     fname = f"{outdir}/SIC_{timestamp}.png"
     ax.legend()
-    plt.show
     fig.savefig(fname)
     plt.close()
     

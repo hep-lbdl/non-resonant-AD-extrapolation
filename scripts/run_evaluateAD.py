@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 from math import sin, cos, pi
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_SIC
+from helpers.plotting import plot_SIC, plot_all_variables
 from helpers.utils import get_roc_curve
 import torch
 import os
@@ -62,39 +62,26 @@ def main():
     # load input files
     inputs = np.load(args.input)
     # sig and bkg
-    sig_feature = inputs["sig_feature"]
-    sig_context = inputs["sig_context"]
-    bkg_feature = inputs["bkg_feature"]
-    bkg_context = inputs["bkg_context"]
-
-    # SR and CR masks
-    sig_mask_SR = inputs["sig_mask_SR"]
-    bkg_mask_SR = inputs["bkg_mask_SR"]
+    sig_SR= inputs["sig_events_SR"]
+    bkg_SR= inputs["bkg_events_SR"]
     inputs.close()
-
-    # Get feature and contexts from data
-    sig_feat_SR = sig_feature[sig_mask_SR]
-    sig_cond_SR = sig_context[sig_mask_SR]
-    
-    # Get feature and contexts from bkg-only data
-    bkg_feat_SR = bkg_feature[bkg_mask_SR]
-    bkg_cond_SR = bkg_context[bkg_mask_SR]
     
     # Create training data set for classifier
-    if bkg_feat_SR.ndim == 1:
-        bkg_feat_SR = bkg_feat_SR.reshape(-1, 1)
-    if sig_feat_SR.ndim == 1:
-        sig_feat_SR =  sig_feat_SR.reshape(-1, 1)
-
-    input_feat_x = np.vstack([bkg_feat_SR, sig_feat_SR])
-    input_cond_x = np.vstack([bkg_cond_SR, sig_cond_SR])
-    input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
+    input_x = np.concatenate([sig_SR, bkg_SR], axis=0)
     
     # Create labels for classifier
-    bkg_feat_SR_label = np.zeros(bkg_feat_SR.shape[0])
-    sig_feat_SR_label = np.ones(sig_feat_SR.shape[0])
-    input_y = np.hstack([bkg_feat_SR_label, sig_feat_SR_label]).reshape(-1, 1)
-    
+    sig_SR_label = np.ones(sig_SR.shape[0])
+    bkg_SR_label = np.zeros(bkg_SR.shape[0])
+    input_y = np.concatenate([sig_SR_label, bkg_SR_label], axis=0).reshape(-1,1)
+
+    if args.verbose:
+        # Plot varibles
+        var_names = ["ht", "met", "m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
+        sig_list = sig_SR.T
+        bkg_list = bkg_SR.T
+        plot_kwargs = {"name":f"sig_vs_bkg_testset_for_evaluation", "title":f"N sig={len(sig_SR)}, N bkg={len(bkg_SR)}", "outdir":args.outdir}
+        plot_all_variables(sig_list, bkg_list, var_names, **plot_kwargs)
+
     # Load the trained model
     logging.info("Loading a trained NN...")
     
@@ -108,13 +95,13 @@ def main():
         NN.set_outdir(f"{args.outdir}/signal_significance")
     
         # Evaluate the classifier.
-        output = NN.evaluation(input_x, input_y)
+        output = NN.evaluation(input_x)
         n_model += 1
         output_list.append(output.flatten())
     
     output_arr = np.stack(output_list, axis=0)
     mean_output = np.mean(output_arr, axis=0)
-    
+
     get_roc_curve(mean_output, input_y.flatten(), outdir=f"{args.outdir}/signal_significance", model_name="")
     
     tpr = np.load(f"{args.outdir}/signal_significance/tpr.npy")

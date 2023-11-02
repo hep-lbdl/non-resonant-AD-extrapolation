@@ -31,6 +31,23 @@ def unit_map():
         "min_dPhi": "",
     }
 
+def load_samples(file):
+    samples = np.loadtxt(file, dtype=str)
+    # Get the names of all varibles
+    variables = samples[0]
+    # Get the events ordered by varibles
+    events = np.asfarray(samples[1:])
+    return variables, events
+
+def sort_event_arr(names, variables, events):
+    
+    event_list = []
+    
+    for x in names:   
+        ind_x = ind(variables, x)
+        event_list.append(events[:, ind_x])
+    
+    return np.stack(event_list, axis=1)
 
 def ind(variables, name):
     return np.where(variables == name)[0][0]
@@ -54,8 +71,10 @@ def plot_quantity_list(data_list, label_list, title, xlabel, bins=None, figname=
         bins = np.linspace(np.min(data_list[0]), np.max(data_list[0]), 30)
     
     for i in range(len(label_list)):
-        if i == len(label_list)-1:
+        if i == len(label_list)-2:
             plt.hist(data_list[i], bins = bins, density = True, ls='--', color='darkred', histtype='step', label=label_list[i])
+        elif i == len(label_list)-1:
+            plt.hist(data_list[i], bins = bins, density = True, ls='--', color='darkslategrey', histtype='step', label=label_list[i])
         else:
             plt.hist(data_list[i], bins = bins, density = True, histtype='step', label=label_list[i])
 
@@ -138,10 +157,10 @@ def plot_quantity_list_ratio(data_list, label_list, title, xlabel, bins=None, fi
     plt.close(fig)
     
 
-def plot_correlation_hist(x, y, xlabel, ylabel, title, figname="", outdir="plots"):
+def plot_correlation_hist(x, y, xlabel, ylabel, xmax, ymax, title, figname="", outdir="plots"):
     
     plt.figure(figsize=(6,6))
-    plt.hist2d(x, y, bins=40, norm=colors.LogNorm())
+    plt.hist2d(x, y, bins=40, range=[[0, xmax], [0, ymax]], norm=colors.LogNorm())
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)

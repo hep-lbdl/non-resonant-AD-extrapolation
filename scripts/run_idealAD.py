@@ -63,60 +63,36 @@ def main():
     # load input files
     inputs = np.load(args.input)
     # data and bkg
-    data_feature = inputs["data_feature"]
-    data_context = inputs["data_context"]
-    bkg_feature = inputs["ideal_bkg_feature"]
-    bkg_context = inputs["ideal_bkg_context"]
-    # SR and CR masks
-    data_mask_CR = inputs["data_mask_CR"]
-    data_mask_SR = inputs["data_mask_SR"]
-    bkg_mask_CR = inputs["ideal_bkg_mask_CR"]
-    bkg_mask_SR = inputs["ideal_bkg_mask_SR"]
+    data_events_SR= inputs["data_events_SR"]
+    ideal_bkg_events_SR= inputs["ideal_bkg_events_SR"]
+    # done loading
     inputs.close()
+    log.info(f"Datset loaded: N data={len(data_events_SR)}, N ideal bkg={len(ideal_bkg_events_SR)}")
 
-    # Get feature and contexts from data
-    data_feat_CR = data_feature[data_mask_CR]
-    data_feat_SR = data_feature[data_mask_SR]
-    data_cond_CR = data_context[data_mask_CR]
-    data_cond_SR = data_context[data_mask_SR]
-    
-    # Get feature and contexts from bkg-only data
-    bkg_feat_CR = bkg_feature[bkg_mask_CR]
-    bkg_feat_SR = bkg_feature[bkg_mask_SR]
-    bkg_cond_CR = bkg_context[bkg_mask_CR]
-    bkg_cond_SR = bkg_context[bkg_mask_SR]
-
-    # define useful variables
-    nfeat = data_feat_CR.shape[1]
-    ncond = data_cond_CR.shape[1]
-    
-    log.info("Training a classifer for signal vs background...")
+    # define number of features
+    nfeat = data_events_SR.shape[1]
     
     # create training data set for classifier
-    input_feat_x = np.concatenate([bkg_feat_SR, data_feat_SR], axis=0)
-    if input_feat_x.ndim == 1:
-        input_feat_x.reshape(-1, 1)
-    input_cond_x = np.concatenate([bkg_cond_SR, data_cond_SR], axis=0)
-    input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
-    
-    # create labels for classifier
-    pred_bkg_SR_label = np.zeros(bkg_feat_SR.shape[0])
-    data_feat_SR_label = np.ones(data_feat_SR.shape[0])
-    input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
+    input_x = np.concatenate([ideal_bkg_events_SR, data_events_SR], axis=0)
 
+    # create labels for classifier
+    ideal_bkg_SR_label = np.zeros(ideal_bkg_events_SR.shape[0])
+    data_SR_label = np.ones(data_events_SR.shape[0])
+    input_y = np.hstack([ideal_bkg_SR_label, data_SR_label]).reshape(-1, 1)
+    
     # Train the AD Classifier
-    
+    log.info("Training a classifer for signal vs background...")
+    log.info("\n")
     log.info(f"Ensamble size: {args.trains}")
-    
+
     for i in range(args.trains):
-        # train classifier for x, m1 and m2
-        log.info(f"Training a classifer for signal vs background...")
-        
-        NN = Classifier(n_inputs=nfeat+ncond, layers=[32, 32], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
+
+        NN = Classifier(n_inputs=nfeat, layers=[32, 32], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
         NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=256, model_name=f"{i}")
 
 
     log.info("Ideal AD done!")
-    
+
+
 if __name__ == "__main__":
     main()
