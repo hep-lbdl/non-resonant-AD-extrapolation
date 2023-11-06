@@ -4,7 +4,25 @@ import logging
 from sklearn.metrics import roc_auc_score, roc_curve
 import matplotlib.pyplot as plt
 from datetime import datetime
+import yaml
+
 log = logging.getLogger("run")
+
+def load_nn_config(config_file):
+
+    if config_file is not None:
+        with open(config_file, 'r') as stream:
+            params = yaml.safe_load(stream)
+        
+        layers = params['layers']
+        lr = float(params['learning_rate'])
+        bs = int(params['batch_size'])
+    
+    else:
+        
+        layers, lr, bs = [32], 1e-4, 256
+
+    return layers, lr, bs
 
 
 def equalize_weights(y_train, y_val, weights_train, weights_val):

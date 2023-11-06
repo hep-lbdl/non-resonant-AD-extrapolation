@@ -90,7 +90,7 @@ class Classifier():
     def np_to_torch(self, array):
     
         return torch.tensor(array.astype(np.float32))
-    
+
     def process_data(self, input_x, input_y, batch_size, weights=None):
         
         if self.n_inputs != input_x.shape[-1]:

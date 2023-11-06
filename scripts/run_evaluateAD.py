@@ -66,7 +66,7 @@ def main():
     bkg_SR= inputs["bkg_events_SR"]
     inputs.close()
     
-    # Create training data set for classifier
+    # Create testing data set for classifier
     input_x = np.concatenate([sig_SR, bkg_SR], axis=0)
     
     # Create labels for classifier

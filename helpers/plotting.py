@@ -200,7 +200,7 @@ def plot_multi_dist(hists, labels, weights=None, htype=None, lstyle=None, title=
     
     if N==len(hists) and N==len(labels) and N<=len(colors):
         bins = np.linspace(ymin, ymax, 50)
-        fig, ax1 = plt.subplots(figsize=(10,6))
+        fig, ax1 = plt.subplots(figsize=(9,6))
         for i in range(N):
             
             w_i = weights[i] if weights is not None else None
@@ -209,9 +209,10 @@ def plot_multi_dist(hists, labels, weights=None, htype=None, lstyle=None, title=
                 
             ax1.hist(hists[i], bins = bins, density = True, weights=w_i, histtype=ht_i, ls=ls_i, alpha=alphas[i], color=colors[i], label=f"{labels[i]}")
             
-        ax1.set_title(f"{title}", fontsize = 14)
-        ax1.set_xlabel(xlabel)
-        plt.legend(loc='upper right', fontsize = 9)
+        # ax1.set_title(f"{title}", fontsize=18)
+        ax1.set_ylabel("Events (a.u.)", fontsize=14)
+        ax1.set_xlabel(xlabel, fontsize=14)
+        plt.legend(loc='upper right', fontsize = 14)
         plt.show
         plot_name = f"{outdir}/{name}.png"
         plt.savefig(plot_name.replace(" ", "_"))
@@ -277,7 +278,6 @@ def plot_all_variables(sig_list, bkg_list, xlabels, labels=["sig", "bkg"], name=
     cbkg = 'royalblue'
     
     N = len(sig_list)
-    print(f"Plotting {N} variables")
     
     if N==len(xlabels):
         fig, ax1 = plt.subplots(1, N, figsize=(6*N,5))

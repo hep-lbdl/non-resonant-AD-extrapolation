@@ -1,11 +1,10 @@
 import argparse
 import numpy as np
-from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
 from helpers.plotting import plot_kl_div_phys, plot_multi_dist, plot_SIC
+from helpers.utils import load_nn_config
 from semivisible_jet.utils import *
-from sklearn.model_selection import train_test_split
 import torch
 import os
 import sys
@@ -28,6 +27,13 @@ parser.add_argument(
     help='Load weights.'
 )
 parser.add_argument(
+    "-c",
+    "--config",
+    action="store",
+    default=None,
+    help="Classifier config file",
+)
+parser.add_argument(
     '-s', 
     "--samples",
     action="store",
@@ -45,7 +51,7 @@ parser.add_argument(
     "--oversample",
     action="store_true",
     default=False,
-    help="Verbose enable DEBUG",
+    help="Oversampling",
 )
 parser.add_argument(
     "-o",
@@ -81,8 +87,8 @@ def main():
     os.makedirs(args.outdir, exist_ok=True)
         
     # load input files
-    inputs = np.load(args.input)
-    
+    inputs = np.load(args.input, mmap_mode='r')
+
     # data and MC
     data_feature = inputs["data_feature"]
     data_context = inputs["data_context"]
@@ -137,7 +143,7 @@ def main():
             else:
                 load_model = False
 
-        if not load_model:        
+        if not load_model:   
             # Train a MAF for density estimation
             logging.info("Training a MAF to learn P(x|m)...")
             MAF = SimpleMAF(num_features=nfeat, num_context=ncond, device=device)
@@ -147,22 +153,22 @@ def main():
         n_sample = 1 if args.oversample else 1
         pred_bkg_SR = MAF.sample(n_sample, MC_cond_SR)
         
-        if args.verbose:
-            # sample CR for debugging
-            pred_bkg_CR = MAF.sample(n_sample, MC_cond_CR)
+        # sample CR for debugging
+        pred_bkg_CR = MAF.sample(n_sample, MC_cond_CR)
         
         # save generated samples
-        np.savez(f"{args.outdir}/samples_data_feat_SR.npz", samples = pred_bkg_SR)
+        np.savez(f"{args.outdir}/samples_data_feat_SR.npz", samples = pred_bkg_SR, CR_samples = pred_bkg_CR)
         log.debug(f"MAF generated {pred_bkg_SR.shape[0]} bkg events in the SR. Oversampling is not avaliable.")
         
     else:
         # Load samples
         pred_bkg_SR = np.load(args.samples)["samples"]
+        pred_bkg_CR = np.load(args.samples)["CR_samples"]
 
     # load weights    
     w_MC = np.load(args.weights)["weights"]
 
-    if args.verbose:
+    if True:
         
         feat = ["m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
         for i in range(len(feat)):
@@ -198,10 +204,12 @@ def main():
 
     w_data = np.array([1.] * data_feat_SR.shape[0])
     input_weights = np.hstack([w_MC, w_data]).reshape(-1, 1)
+
+    layers, lr, bs = load_nn_config(args.config)
     
     # Train a classifier for x, m1 and m2.
-    NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-    NN.train(input_x, input_y, weights=input_weights, save_model=True, model_name="0")
+    NN = Classifier(n_inputs=nfeat+ncond, layers=layers, learning_rate=lr, device=device, outdir=f"{args.outdir}/signal_significance")
+    NN.train(input_x, input_y, weights=input_weights, batch_size=bs, save_model=True, model_name="0")
 
     log.info("CATHODE style extrapolation done!")
     
