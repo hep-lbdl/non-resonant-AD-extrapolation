@@ -111,7 +111,7 @@ def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, weights1=None
         print("Wrong input lists!")
         
         
-def plot_kl_div_phys(x1, x2, label1, label2, w1=None, w2=None, name="feature", tag = "", bins=50, outdir="plots", *args, **kwargs):
+def plot_kl_div_phys_toy(x1, x2, label1, label2, w1=None, w2=None, name="feature", tag = "", bins=50, outdir="plots", *args, **kwargs):
     
     colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     
@@ -192,7 +192,7 @@ def plot_results(k_list, theta_list, Y_list, samples_CR_list, samples_SR_list, m
     
     
 def plot_multi_dist(hists, labels, weights=None, htype=None, lstyle=None, title="", name="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
-    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    colors = ['royalblue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     alphas = [1, 0.2, 1, 1, 0.3, 1, 1, 1]
     # colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     
@@ -200,26 +200,83 @@ def plot_multi_dist(hists, labels, weights=None, htype=None, lstyle=None, title=
     
     if N==len(hists) and N==len(labels) and N<=len(colors):
         bins = np.linspace(ymin, ymax, 50)
-        fig, ax1 = plt.subplots(figsize=(9,6))
-        for i in range(N):
+        fig, ax = plt.subplots(2, figsize=(8,8), gridspec_kw={'height_ratios': [3, 1]})
+        c_list = []
+        for i in range(3):
             
             w_i = weights[i] if weights is not None else None
             ht_i = htype[i] if htype is not None else 'step'
             ls_i = lstyle[i] if lstyle is not None else '-'
                 
-            ax1.hist(hists[i], bins = bins, density = True, weights=w_i, histtype=ht_i, ls=ls_i, alpha=alphas[i], color=colors[i], label=f"{labels[i]}")
-            
-        # ax1.set_title(f"{title}", fontsize=18)
-        ax1.set_ylabel("Events (a.u.)", fontsize=14)
-        ax1.set_xlabel(xlabel, fontsize=14)
-        plt.legend(loc='upper right', fontsize = 14)
-        plt.show
+            c, cbins, _ = ax[0].hist(hists[i], bins = bins, lw=2, density = True, weights=w_i, histtype=ht_i, ls=ls_i, alpha=alphas[i], color=colors[i], label=f"{labels[i]}")
+            c_list.append(c)
+
+        # ratio of weighted SR vs true bkg SR
+        MC_bkg_SR = np.array(c_list[0])
+        weighted_bkg_SR = np.array(c_list[1])
+        target_bkg_SR = np.array(c_list[2])
+        r_mcbkg = np.divide(MC_bkg_SR, target_bkg_SR, out=np.full_like(MC_bkg_SR, np.nan), where=(target_bkg_SR != 0))
+        r_bkg = np.divide(weighted_bkg_SR, target_bkg_SR, out=np.full_like(weighted_bkg_SR, np.nan), where=(target_bkg_SR != 0))
+        
+        # plot ratio
+        ax[1].plot(cbins[:-1], r_bkg, color='slategrey', marker='.', lw=2)
+        # ax[1].plot(cbins[:-1], r_mcbkg, color='royalblue', marker='.', lw=2, alpha=0.6)
+        ax[1].axhline(y=1, color='black', linestyle='-')
+ 
+        ax[1].set_xlabel(xlabel, fontsize=14)
+        ax[1].set_ylabel("Ratio to truth", fontsize=16)
+        ax[1].set_xlabel(xlabel, fontsize=14)
+        ax[1].set_ylim(0.5, 1.5)
+        ax[1].tick_params(axis='both', which='major', labelsize=12)
+
+        ax[0].set_ylabel("Events (a.u.)", fontsize=16)
+        ax[0].set_xticks([]) 
+        # ax[0].set_yticks([])
+        # plt.legend(loc='upper right', fontsize = 14)
+        # set legend position
+        ax[0].legend(fontsize=16)
+
         plot_name = f"{outdir}/{name}.png"
-        plt.savefig(plot_name.replace(" ", "_"))
+        plot_name = plot_name.replace(" ", "_")
+        plt.savefig(plot_name)
         plt.close()
+        print(f"Reweighting plot saved as {plot_name}")
     else:
         print("Wrong input lists!")
-        
+
+
+def plot_kl_div_phys(x1, x2, label1, label2, w1=None, w2=None, name="feature", tag = "", bins=50, outdir="plots", *args, **kwargs):
+    
+    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
+    
+    fig, ax = plt.subplots(2, figsize=(8,8), gridspec_kw={'height_ratios': [3, 1]})
+
+    c0, cbins, _ = ax[0].hist(x1, bins = bins, density = True, weights=w1, histtype='step', lw=2, color=colors[2], label=label1)
+    c1, cbins, _ = ax[0].hist(x2, bins = bins, density = True, weights=w2, histtype='stepfilled', alpha = 0.2, color=colors[1], label=label2)
+
+    # ratio of gen SR vs true SR
+    gen_bkg_SR = np.array(c1)
+    target_bkg_SR = np.array(c0)
+    r_bkg = np.divide(gen_bkg_SR, target_bkg_SR, out=np.full_like(gen_bkg_SR, np.nan), where=(target_bkg_SR != 0))
+
+    # plot ratio
+    ax[1].plot(cbins[:-1], r_bkg, color='slategrey', marker='.', lw=2)
+    ax[1].axhline(y=1, color='black', linestyle='-')
+    ax[1].set_xlabel(name, fontsize=14)
+    ax[1].set_ylabel("Ratio to truth", fontsize=16)
+    ax[1].set_ylim(0.5, 1.5)
+    ax[1].tick_params(axis='both', which='major', labelsize=12)
+
+    ax[0].set_ylabel("Events (a.u.)", fontsize=14)
+    ax[0].set_xticks([]) 
+    ax[0].legend(fontsize=16)
+    
+    plot_name = f"{outdir}/{label1}_{label2}_{tag}.png"
+    plot_name = plot_name.replace(" ", "_")
+    plt.savefig(plot_name)
+    print(f"MAF plots saved as {plot_name}")
+    plt.close()
+
 def plot_multi_data_MC_dist(data_list, MC_list, labels, weights=None, name="data_vs_mc", title="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
     colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     colors = colors + colors
@@ -322,7 +379,6 @@ def plot_SIC(tpr, fpr, label, outdir="./"):
 def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, name="", outdir="./"):
     
     label_list = [f"S/B={percent*100:.3f}%" for percent in sig_percent_list]
-    max_SIC_list = []
     
     fig, ax = plt.subplots(1, 1, figsize=(7, 5))
     
@@ -332,14 +388,37 @@ def plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, name="", outdir="./"):
         fpr = np.array(fpr_list[i])
 
         SIC = tpr[fpr>0] / np.sqrt(fpr[fpr>0])
-        max_SIC_list.append(np.max(SIC))
 
         ax.plot(tpr[fpr>0], SIC, label=f"{label_list[i]}")
-        ax.set_ylabel(r"SIC = $\frac{\rm TPR}{\sqrt{\rm FPR}}$")
-        ax.set_xlabel("Signal Efficiency (TPR)")
-        ax.set_title(f"Significant improvement characteristic {name}")
+        ax.set_ylabel(r"SIC = $\frac{\rm TPR}{\sqrt{\rm FPR}}$", fontsize=14)
+        ax.set_xlabel("Signal Efficiency (TPR)", fontsize=14)
+        ax.set_title(f"Significant improvement characteristic {name}", fontsize=14)
         # ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
     fname = f"{outdir}/SIC_sig_inj.png"
+    ax.legend()
+    fig.savefig(fname)
+    plt.close()
+
+def plot_rej_lists(tpr_list, fpr_list, sig_percent_list, name="", outdir="./"):
+    
+    label_list = [f"S/B={percent*100:.3f}%" for percent in sig_percent_list]
+    
+    fig, ax = plt.subplots(1, 1, figsize=(7, 5))
+    
+    for i in range(len(tpr_list)):
+    
+        tpr = np.array(tpr_list[i])
+        fpr = np.array(fpr_list[i])
+
+        rej = 1/fpr[fpr>0]
+
+        ax.plot(tpr[fpr>0], rej, label=f"{label_list[i]}")
+        ax.set_yscale('log')
+        ax.set_ylabel(r"rejection = $\frac{1}{\rm FPR}$", fontsize=14)
+        ax.set_xlabel("Signal Efficiency (TPR)", fontsize=14)
+        ax.set_title(f"Rejection {name}", fontsize=14)
+        # ax.plot([0,1],[0,1],color="gray",ls=":",label="Random")
+    fname = f"{outdir}/rejection_sig_inj.png"
     ax.legend()
     fig.savefig(fname)
     plt.close()
@@ -352,11 +431,11 @@ def plot_max_SIC(sig_percent, max_SIC, label="", outdir="./"):
     plt.figure(figsize=(7, 5))
     plt.plot(sig_percent, max_SIC, '-', label=label)  # Line color (default)
     plt.plot(sig_percent, max_SIC, 'x', color='black')  # Marker color (black)
-    plt.xscale('log')
+    # plt.xscale('log')
     plt.ylabel(r"max SIC")
     plt.xlabel("S/B (%)")
     plt.legend()
-    plt.title(f"max SIC per signal significance")
+    plt.title("max SIC per signal significance")
     plt.savefig(f"{outdir}/maxSIC_sig_inj.png")
     plt.close()
     
