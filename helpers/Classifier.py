@@ -82,6 +82,7 @@ class Classifier():
         self.outdir = outdir
         
     def to(self, device):
+        self.device = device
         self.model.to(device)
 
     def set_outdir(self, outdir_path):
