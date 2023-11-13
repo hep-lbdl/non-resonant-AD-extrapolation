@@ -72,6 +72,7 @@ class SimpleMAF:
         return next(self.flow.parameters()).device
 
     def to(self, device):
+        self.device = device
         self.flow.to(device)
         
     def scaler_transform_x(self, input_x):

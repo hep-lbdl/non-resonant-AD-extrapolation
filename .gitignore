@@ -1,6 +1,11 @@
 plots*
+*plots
 outputs*
 example*
+*.out
+*.err
+sbatch
+test*
 
 __pycache__/
 helpers/__pycache__/
