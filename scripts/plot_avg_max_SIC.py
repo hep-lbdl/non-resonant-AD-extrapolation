@@ -71,6 +71,7 @@ def main():
             for i in range(n_files):
                 tpr_list.append(np.load(f"supervised_dataset/run{i}/signal_significance/tpr.npy"))
                 fpr_list.append(np.load(f"supervised_dataset/run{i}/signal_significance/fpr.npy"))
+            
             max_SIC_list = [np.max(tpr[fpr > 0] / np.sqrt(fpr[fpr > 0])) for tpr, fpr in zip(tpr_list, fpr_list)]
             
             max_SIC_arr = np.array(max_SIC_list).flatten()

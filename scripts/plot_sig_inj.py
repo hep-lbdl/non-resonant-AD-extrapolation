@@ -3,7 +3,7 @@ import numpy as np
 from math import sin, cos, pi
 from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_kl_div_data_reweight, plot_SIC_lists, plot_max_SIC
+from helpers.plotting import plot_kl_div_data_reweight, plot_SIC_lists, plot_max_SIC, plot_rej_lists
 import torch
 import os
 import sys
@@ -77,40 +77,33 @@ def main():
         inputs.close()
         
     
-    if args.kldiv:
-        for i in range(n_files):
-
-            # load input files
-            inputs = np.load(input_files[i])
-            # data and MC
-            data_feature = inputs["data_feature"]
-            data_mask_SR = inputs["data_mask_SR"]
-            data_mask_CR = inputs["data_mask_CR"]
-            MC_feature = inputs["MC_feature"]
-            MC_mask_SR = inputs["MC_mask_SR"]
-            inputs.close()
-
-            data_SR = data_feature[data_mask_SR]
-            data_CR = data_feature[data_mask_CR]
-            MC_SR = MC_feature[MC_mask_SR]
-
-            samples_path = f"{args.input}/run{i}/samples_data_feat_SR.npz"
-            pred_bkg_SR = np.load(samples_path)["samples"]
-            #pred_bkg_SR_from_truth = np.load(samples_path)["samples_from_truth"]
-            w_MC = np.load(samples_path)["weights"]
-
-            title_tag=f"$x=N(0.5(m_1 + m_2), 1)$ with S/B={sig_percent_list[i]}"
-
-            # Plot true data in SR, predicted background in SR, reweighted background in SR, and the training data in CR.
-            plot_kl_div_data_reweight(data_CR, data_SR, pred_bkg_SR, w_MC, name=f"data_reweight_s{i}", title=title_tag, ymin=-8, ymax=16, outdir=outdir)
-        
-    
     plot_SIC_lists(tpr_list, fpr_list, sig_percent_list, name=f"{args.name}", outdir=outdir)
     
-    max_SIC_list = [np.max(tpr[fpr > 0] / np.sqrt(fpr[fpr > 0])) for tpr, fpr in zip(tpr_list, fpr_list)]
+    plot_rej_lists(tpr_list, fpr_list, sig_percent_list, name=f"{args.name}", outdir=outdir)
     
+    max_SIC_list = []
+
+    if args.name=="idealAD":
+        ideal_bkg_events_SR = np.load(input_files[0])["ideal_bkg_events_SR"]
+        num_bkg_events = len(ideal_bkg_events_SR)
+    else:
+        MC_mask_SR = np.load(input_files[0])["MC_mask_SR"]
+        num_bkg_events = np.sum(MC_mask_SR)
+
+    for tpr, fpr in zip(tpr_list, fpr_list):
+        
+        sic = tpr[fpr > 0] / np.sqrt(fpr[fpr > 0])
+
+        if num_bkg_events > 0:
+            eps_bkg = 1.0/((0.4**2)*num_bkg_events)
+            fpr_cutoff_indices = np.where(fpr[fpr > 0] > eps_bkg)
+            max_SIC_list.append(np.nanmax(sic[fpr_cutoff_indices]))
+        else:
+            max_SIC_list.append(np.nanmax(sic))
+
     plot_max_SIC(sig_percent_list, max_SIC_list, label=f"{args.name}", outdir=outdir)
-    
+
+
     # save SICs
     np.savez(f"{outdir}/max_SIC_{args.name}.npz", sig_percent=sig_percent_list, max_SIC=max_SIC_list)
     
