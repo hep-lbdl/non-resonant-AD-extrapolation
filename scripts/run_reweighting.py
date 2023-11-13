@@ -40,6 +40,12 @@ parser.add_argument(
     help="output directory",
 )
 parser.add_argument(
+    "--toy",
+    action="store_true",
+    default=False,
+    help="Load toy samples.",
+)
+parser.add_argument(
     "-v",
     "--verbose",
     action="store_true",
@@ -56,15 +62,7 @@ log = logging.getLogger("run")
 log.setLevel(log_level)
 
 
-def main():
-
-    # selecting appropriate device
-    CUDA = torch.cuda.is_available()
-    print("cuda available:", CUDA)
-    device = torch.device("cuda" if CUDA else "cpu")
-    
-    os.makedirs(args.outdir, exist_ok=True)
-        
+def load_samples():
     # load input files
     inputs = np.load(args.input)
     # data, MC, and bkg
@@ -73,26 +71,34 @@ def main():
     bkg_context = inputs["bkg_context"]
     # SR and CR masks
     data_mask_CR = inputs["data_mask_CR"]
-    data_mask_SR = inputs["data_mask_SR"]
     MC_mask_CR = inputs["MC_mask_CR"]
     MC_mask_SR = inputs["MC_mask_SR"]
-    bkg_mask_CR = inputs["bkg_mask_CR"]
     bkg_mask_SR = inputs["bkg_mask_SR"]
     # Signal injected
     sig_percent = inputs["sig_percent"]
     inputs.close()
-
+    
     # Get contexts from data
     data_cond_CR = data_context[data_mask_CR]
-    data_cond_SR = data_context[data_mask_SR]
-
     # Get contexts from MC
     MC_cond_CR = MC_context[MC_mask_CR]
     MC_cond_SR = MC_context[MC_mask_SR]
-
     # Get contexts from bkg
-    bkg_cond_CR = bkg_context[bkg_mask_CR]
     bkg_cond_SR = bkg_context[bkg_mask_SR]
+    
+    return data_cond_CR, MC_cond_CR, MC_cond_SR, bkg_cond_SR, sig_percent
+
+
+def main():
+
+    # selecting appropriate device
+    CUDA = torch.cuda.is_available()
+    print("cuda available:", CUDA)
+    device = torch.device("cuda" if CUDA else "cpu")
+    
+    os.makedirs(args.outdir, exist_ok=True)
+    
+    data_cond_CR, MC_cond_CR, MC_cond_SR, bkg_cond_SR, sig_percent = load_samples()
     
     # define useful variables
     ncond = data_cond_CR.shape[1]
@@ -135,7 +141,7 @@ def main():
     w_SR = NN_reweight.evaluation(MC_cond_SR)
     w_SR = (w_SR/(1.-w_SR)).flatten()
     
-    if True:
+    if not args.toy:
 
         os.makedirs(f"{args.outdir}/reweighting_plots", exist_ok=True)
     
@@ -148,15 +154,17 @@ def main():
         names = [name_map()["ht"], name_map()["met"], ]
         units = [unit_map()["ht"], unit_map()["met"]]
         ymaxs = [2000, 400]
+        ymins = [0,0]
+        ymins = [800, 100]
 
         for i in [0,1]:
 
             hlist = [MC_cond_SR[:,i], MC_cond_SR[:,i], bkg_cond_SR[:,i], MC_cond_CR[:,i], MC_cond_CR[:,i], data_cond_CR[:,i]]
             weights = [None, w_SR, None, None, w_CR, None]
-            labels = [f"MC SR (num. events: {len(MC_cond_SR[:,i]):.0e})", "Reweighted MC SR", "True bkg SR", f"MC CR (num. events: {len(MC_cond_CR[:,i]):.1e})", "Reweighted MC CR", "Data CR"]
+            labels = [f"MC SR", "Reweighted MC SR", "True bkg SR", f"MC CR", "Reweighted MC CR", "Data CR"]
             htype = ["step", "stepfilled", "step"]*2
             lstyle = ["-"]*3 + ["--"]*3
-            plot_kwargs = {"title":f"Reweighted MC vs data for {names[i]}, S/B={sig_percent*1e2:.1f}%", "name":f"MC vs data reweighting {names[i]}", "xlabel":f"{names[i]} {units[i]}", "ymin":0, "ymax":ymaxs[i], "outdir":f"{args.outdir}/reweighting_plots"}
+            plot_kwargs = {"title":f"Reweighted MC vs data for {names[i]}, S/B={sig_percent*1e2:.1f}%", "name":f"MC vs data reweighting {names[i]}", "xlabel":f"{names[i]} {units[i]}", "ymin":ymins[i], "ymax":ymaxs[i], "outdir":f"{args.outdir}/reweighting_plots"}
             plot_multi_dist(hlist, labels, weights=weights, htype=htype, lstyle=lstyle, **plot_kwargs)
 
 
