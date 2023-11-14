@@ -98,6 +98,7 @@ def load_samples():
     data_feat_CR = data_feature[data_mask_CR]
     data_feat_SR = data_feature[data_mask_SR]
     data_cond_CR = data_context[data_mask_CR]
+    data_cond_SR = data_context[data_mask_SR]
     # Get SR contexts from MC
     MC_cond_SR = MC_context[MC_mask_SR]
 
@@ -105,7 +106,7 @@ def load_samples():
         data_feat_CR = data_feat_CR.reshape(-1,1)
         data_feat_SR = data_feat_SR.reshape(-1,1)
     
-    return data_feat_CR, data_feat_SR, data_cond_CR, MC_cond_SR
+    return data_feat_CR, data_feat_SR, data_cond_CR, data_cond_SR, MC_cond_SR
 
 
 def plot_reweighting(data_feat, pred_bkg, w_MC=None, RTag="SR"):
@@ -138,12 +139,12 @@ def main():
     os.makedirs(args.outdir, exist_ok=True)
         
     # load input files
-    data_feat_CR, data_feat_SR, data_cond_CR, MC_cond_SR = load_samples()
+    data_feat_CR, data_feat_SR, data_cond_CR, data_cond_SR, MC_cond_SR = load_samples()
 
     # define useful variables
     nfeat = data_feat_CR.shape[1]
     ncond = data_cond_CR.shape[1]
-    input_dim = nfeat
+    input_dim = nfeat+ncond if args.toy else nfeat
     n_sample = 1
 
     # Load existing model
@@ -198,7 +199,11 @@ def main():
     
     # Create training data set for the classifier.
     input_feat_x = np.concatenate([pred_bkg_SR, data_feat_SR], axis=0)
-    input_x = input_feat_x
+    if args.toy:
+        input_cond_x = np.concatenate([MC_cond_SR, data_cond_SR], axis=0)
+        input_x = np.concatenate([input_cond_x, input_feat_x], axis=1)
+    else:
+        input_x = input_feat_x
 
     # Create labels for the classifier.
     pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape[0])

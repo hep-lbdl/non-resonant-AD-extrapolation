@@ -52,7 +52,7 @@ log.setLevel(log_level)
 
 def main():
 
-    # selecting appropriate device
+    # # selecting appropriate device
     CUDA = torch.cuda.is_available()
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
@@ -62,8 +62,8 @@ def main():
     # load input files
     inputs = np.load(args.input)
     # sig and bkg
-    sig_SR= inputs["sig_events_SR"]
-    bkg_SR= inputs["bkg_events_SR"]
+    sig_SR= inputs["sig_events_SR"][:, 2:]
+    bkg_SR= inputs["bkg_events_SR"][:, 2:]
     inputs.close()
     
     # Create testing data set for classifier
@@ -76,7 +76,7 @@ def main():
 
     if args.verbose:
         # Plot varibles
-        var_names = ["ht", "met", "m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
+        var_names = ["m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
         sig_list = sig_SR.T
         bkg_list = bkg_SR.T
         plot_kwargs = {"name":f"sig_vs_bkg_testset_for_evaluation", "title":f"N sig={len(sig_SR)}, N bkg={len(bkg_SR)}", "outdir":args.outdir}
@@ -86,6 +86,7 @@ def main():
     logging.info("Loading a trained NN...")
     
     model_paths = glob.glob(f"{args.outdir}/signal_significance/trained_AD_classifier*.pt")
+
     output_list = []
     n_model = 0
     for model in model_paths:
@@ -93,7 +94,9 @@ def main():
         NN = torch.load(model)
         NN.to(device)
         NN.set_outdir(f"{args.outdir}/signal_significance")
-    
+
+        log.info(f"Model {model} loaded.")
+
         # Evaluate the classifier.
         output = NN.evaluation(input_x)
         n_model += 1

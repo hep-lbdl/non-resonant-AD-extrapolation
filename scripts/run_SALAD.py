@@ -6,7 +6,6 @@ from helpers.utils import load_nn_config
 from semivisible_jet.utils import *
 import torch
 import os
-import sys
 import logging
 
 
@@ -167,8 +166,6 @@ def main():
         NN_reweight.to(device)
         
         # evaluate classifier and calculate the weights
-        if MC_feat_SR.ndim == 1:
-            MC_feat_SR = MC_feat_SR.reshape(-1,1)
         input_x_test = np.concatenate([MC_cond_SR, MC_feat_SR], axis=1)
         
         w_SR = NN_reweight.evaluation(input_x_test)

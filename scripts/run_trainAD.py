@@ -1,14 +1,11 @@
 import argparse
 import numpy as np
 from math import sin, cos, pi
-from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
-from helpers.utils import equalize_weights
-from sklearn.model_selection import train_test_split
+from helpers.plotting import plot_kl_div
+from helpers.utils import load_nn_config
 import torch
 import os
-import sys
 import logging
 
 
@@ -35,6 +32,13 @@ parser.add_argument(
     help='Directly load generated samples.'
 )
 parser.add_argument(
+    "-c",
+    "--config",
+    action="store",
+    default=None,
+    help="Classifier config file",
+)
+parser.add_argument(
     '-t', 
     "--trains",
     action="store",
@@ -48,6 +52,12 @@ parser.add_argument(
     action="store",
     default="CATHODE_run",
     help="output directory",
+)
+parser.add_argument(
+    "--toy",
+    action="store_true",
+    default=False,
+    help="Load toy samples.",
 )
 parser.add_argument(
     "-v",
@@ -66,6 +76,32 @@ log = logging.getLogger("run")
 log.setLevel(log_level)
 
 
+def load_samples():
+    # load input files
+    inputs = np.load(args.input)
+
+    # data
+    data_feature = inputs["data_feature"]
+    data_context = inputs["data_context"]
+    # MC
+    MC_context = inputs["MC_context"]
+    # SR mask
+    data_mask_SR = inputs["data_mask_SR"]
+    MC_mask_SR = inputs["MC_mask_SR"]
+    
+    inputs.close()
+
+    # Get feature and contexts from data
+    data_feat_SR = data_feature[data_mask_SR]
+    data_cond_SR = data_context[data_mask_SR]
+    MC_cond_SR = MC_context[MC_mask_SR]
+
+    if args.toy:
+        data_feat_SR = data_feat_SR.reshape(-1,1)
+
+    return data_feat_SR, data_cond_SR, MC_cond_SR
+
+
 def main():
 
     # selecting appropriate device
@@ -75,40 +111,12 @@ def main():
     
     os.makedirs(args.outdir, exist_ok=True)
         
-    # load input files
-    inputs = np.load(args.input)
-    
-    # data and MC
-    data_feature = inputs["data_feature"]
-    data_context = inputs["data_context"]
-    MC_context = inputs["MC_context"]
-    
-    # sig and bkg
-    sig_feature = inputs["sig_feature"]
-    sig_context = inputs["sig_context"]
-    bkg_feature = inputs["bkg_feature"]
-    bkg_context = inputs["bkg_context"]
-    
-    # SR mask
-    data_mask_SR = inputs["data_mask_SR"]
-    MC_mask_SR = inputs["MC_mask_SR"]
-    
-    #sig and bkg SR masks
-    sig_mask_SR = inputs["sig_mask_SR"]
-    bkg_mask_SR = inputs["bkg_mask_SR"]
-    
-    inputs.close()
-
-    # Get feature and contexts from data
-    data_feat_SR = data_feature[data_mask_SR]
-    data_cond_SR = data_context[data_mask_SR]
-
-    # Get only contexts from MC
-    MC_cond_SR = MC_context[MC_mask_SR]
+    data_feat_SR, data_cond_SR, MC_cond_SR = load_samples()
 
     # define useful variables
-    nfeat = data_feat_SR.ndim
-    ncond = data_cond_SR.ndim
+    nfeat = data_feat_SR.shape[1]
+    ncond = data_cond_SR.shape[1]
+    input_dim = nfeat+ncond if args.toy else nfeat
 
     # Load samples
     pred_bkg_SR = np.load(args.samples)["samples"]
@@ -127,28 +135,33 @@ def main():
     # Prepare traning inputs to the AD Classifier
     
     # Create training data set for the classifier.
-    input_feat_x = np.hstack([pred_bkg_SR, data_feat_SR]).reshape(-1, 1)
-    input_cond_x = np.vstack([MC_cond_SR, data_cond_SR])
-    input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
+    input_feat_x = np.concatenate([pred_bkg_SR, data_feat_SR], axis=0)
+    if args.toy:
+        input_cond_x = np.concatenate([MC_cond_SR, data_cond_SR], axis=0)
+        input_x = np.concatenate([input_cond_x, input_feat_x], axis=1)
+    else:
+        input_x = input_feat_x
     
     # Create labels for the classifier.
-    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape)
-    data_feat_SR_label = np.ones(data_feat_SR.shape)
+    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape[0])
+    data_feat_SR_label = np.ones(data_feat_SR.shape[0])
     input_y = np.hstack([pred_bkg_SR_label, data_feat_SR_label]).reshape(-1, 1)
 
     w_data = np.array([1.]*len(data_feat_SR))
     input_weights = np.hstack([w_MC, w_data]).reshape(-1, 1)
     
     # Train the AD Classifier
-    
     log.info(f"Ensamble size: {args.trains}")
     
+    layers, lr, bs = load_nn_config(args.config)
+
     for i in range(args.trains):
         # Train a classifier for x, m1 and m2.
         log.info(f"Training a classifer for signal vs background...")
         
-        NN = Classifier(n_inputs=nfeat+ncond, layers=[64,128,64], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-        NN.train(input_x, input_y, weights=input_weights, save_model=True, model_name=f"{i+1}")
+        NN = Classifier(n_inputs=input_dim, layers=layers, learning_rate=lr, device=device, outdir=f"{args.outdir}/signal_significance")
+        NN.train(input_x, input_y, weights=input_weights, batch_size=bs, save_model=True, model_name=f"{i+1}")
+        
 
     log.info("AD training done!")
 

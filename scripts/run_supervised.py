@@ -1,14 +1,9 @@
 import argparse
 import numpy as np
-from math import sin, cos, pi
-from helpers.SimpleMAF import SimpleMAF
 from helpers.Classifier import Classifier
-from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
-from helpers.utils import equalize_weights
-from sklearn.model_selection import train_test_split
+from helpers.utils import load_nn_config
 import torch
 import os
-import sys
 import logging
 
 
@@ -27,6 +22,13 @@ parser.add_argument(
     type=int,
     default=1,
     help='Number of trainings.'
+)
+parser.add_argument(
+    "-c",
+    "--config",
+    action="store",
+    default=None,
+    help="Classifier config file",
 )
 parser.add_argument(
     "-o",
@@ -64,59 +66,32 @@ def main():
     # load input files
     inputs = np.load(args.input)
     # sig and bkg
-    sig_feature = inputs["sig_feature"]
-    sig_context = inputs["sig_context"]
-    bkg_feature = inputs["bkg_feature"]
-    bkg_context = inputs["bkg_context"]
-
-    # SR and CR masks
-    sig_mask_SR = inputs["sig_mask_SR"]
-    bkg_mask_SR = inputs["bkg_mask_SR"]
+    sig_SR= inputs["sig_events_SR"]
+    bkg_SR= inputs["bkg_events_SR"]
     inputs.close()
 
-    # Get feature and contexts from data
-    sig_feat_SR = sig_feature[sig_mask_SR]
-    sig_cond_SR = sig_context[sig_mask_SR]
-    
-    # Get feature and contexts from bkg-only data
-    bkg_feat_SR = bkg_feature[bkg_mask_SR]
-    bkg_cond_SR = bkg_context[bkg_mask_SR]
-
-    # define useful variables
-    nfeat = sig_feat_SR.shape[1]
-    ncond = sig_cond_SR.shape[1]
-
-    pred_bkg_SR = bkg_feat_SR.flatten() if bkg_feat_SR.ndim==1 else bkg_feat_SR
+    # define number of features
+    nfeat = sig_SR.shape[1]
     
     log.info("Training a classifer for signal vs background...")
     
     # create training data set for classifier
-    input_feat_x = np.concatenate([pred_bkg_SR, sig_feat_SR], axis=0)
-    if input_feat_x.ndim==1:
-        input_feat_x.reshape(-1, 1)
-    input_cond_x = np.concatenate([bkg_cond_SR, sig_cond_SR], axis=0)
-    input_x = np.concatenate([input_feat_x, input_cond_x], axis=1)
+    input_x = np.concatenate([sig_SR, bkg_SR], axis=0)
     
-    # create labels for classifier
-    pred_bkg_SR_label = np.zeros(pred_bkg_SR.shape[0])
-    sig_feat_SR_label = np.ones(sig_feat_SR.shape[0])
-    input_y = np.hstack([pred_bkg_SR_label, sig_feat_SR_label]).reshape(-1, 1)
-    
-    # generate weights
-    w_bkg = np.array([1.]*pred_bkg_SR.shape[0])
-    w_sig = np.array([1.]*sig_feat_SR.shape[0])
-    input_weights = np.hstack([w_bkg, w_sig]).reshape(-1, 1)
+    # Create labels for classifier
+    sig_SR_label = np.ones(sig_SR.shape[0])
+    bkg_SR_label = np.zeros(bkg_SR.shape[0])
+    input_y = np.concatenate([sig_SR_label, bkg_SR_label], axis=0).reshape(-1,1)
     
     # Train the AD Classifier
-    
+    log.info(f"Training a classifer for signal vs background...")
     log.info(f"Ensamble size: {args.trains}")
-    
+
+    layers, lr, bs = load_nn_config(args.config)
+
     for i in range(args.trains):
-        # train classifier for x, m1 and m2
-        log.info(f"Training a classifer for signal vs background...")
-        
-        NN = Classifier(n_inputs=nfeat+ncond, layers=[128, 128, 128], learning_rate=1e-4, device=device, outdir=f"{args.outdir}/signal_significance")
-        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=512, model_name=f"{i}")
+        NN = Classifier(n_inputs=nfeat, layers=layers, learning_rate=lr, device=device, outdir=f"{args.outdir}/signal_significance")
+        NN.train(input_x, input_y, save_model=True, n_epochs=200, batch_size=bs, model_name=f"{i}")
 
     log.info("Fully supervised learning done!")
     
