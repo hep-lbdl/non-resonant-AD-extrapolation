@@ -19,7 +19,7 @@ from tqdm import tqdm
 from nflows.flows.base import Flow
 from nflows.distributions.normal import StandardNormal, ConditionalDiagonalNormal
 from nflows.transforms.base import CompositeTransform
-from nflows.transforms.autoregressive import MaskedAffineAutoregressiveTransform
+from nflows.transforms.autoregressive import MaskedAffineAutoregressiveTransform, MaskedPiecewiseRationalQuadraticAutoregressiveTransform
 from nflows.transforms.permutations import ReversePermutation
 
 log = logging.getLogger("run")
@@ -45,8 +45,8 @@ class SimpleMAF:
         self.ncond = num_context
         
         # Scaler transform for preprocessing
-        self.scaler_x = StandardScaler()
-        self.scaler_c = StandardScaler()
+        #self.scaler_x = StandardScaler()
+        #self.scaler_c = StandardScaler()
  
         if base_dist is not None:
             self.base_dist = base_dist
@@ -58,11 +58,22 @@ class SimpleMAF:
 
         transforms = []
         for _ in range(num_layers):
+            
             transforms.append(ReversePermutation(features=num_features))
             transforms.append(MaskedAffineAutoregressiveTransform(features=num_features, 
                                                                   hidden_features=num_hidden_features, 
                                                                   context_features=num_context, 
                                                                   activation = activation))
+            """
+            
+            transforms.append(MaskedPiecewiseRationalQuadraticAutoregressiveTransform(features=num_features, 
+                                                                  hidden_features=num_hidden_features, 
+                                                                  context_features=num_context, 
+                                                                  activation = activation,
+                                                                  num_blocks = 8, tail_bound = 3, tails = "linear", num_bins = 10))
+                
+            transforms.append(ReversePermutation(features=num_features))
+            """
         self.transform = CompositeTransform(transforms)
         self.flow = Flow(self.transform, self.base_dist).to(device)
         self.optimizer = optim.Adam(self.flow.parameters(), lr=learning_rate)
@@ -72,7 +83,6 @@ class SimpleMAF:
         return next(self.flow.parameters()).device
 
     def to(self, device):
-        self.device = device
         self.flow.to(device)
         
     def scaler_transform_x(self, input_x):
@@ -108,11 +118,17 @@ class SimpleMAF:
         data_train, data_val = train_test_split(data, test_size=0.2, shuffle=True)
 
         # Data preprocessing
-        x_train = self.scaler_x.fit_transform(data_train[:, :-self.ncond])
-        x_val = self.scaler_x.transform(data_val[:, :-self.ncond])
+        #x_train = self.scaler_x.fit_transform(data_train[:, :-self.ncond])
+        #x_val = self.scaler_x.transform(data_val[:, :-self.ncond])
+        
+        x_train = data_train[:, :-self.ncond]
+        x_val = data_val[:, :-self.ncond]
 
-        c_train = self.scaler_c.fit_transform(data_train[:, -self.ncond:])
-        c_val = self.scaler_c.transform(data_val[:, -self.ncond:])
+        #c_train = self.scaler_c.fit_transform(data_train[:, -self.ncond:])
+        #c_val = self.scaler_c.transform(data_val[:, -self.ncond:])
+        
+        c_train = data_train[:, -self.ncond:]
+        c_val = data_val[:, -self.ncond:]
         
         data_train = np.concatenate((x_train, c_train), axis=1)
         data_val = np.concatenate((x_val, c_val), axis=1)
@@ -123,9 +139,13 @@ class SimpleMAF:
         return train_data, val_data
         
     
-    def train(self, data, cond=None, n_epochs=100, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.005, save_model=False):
+    def train(self, data, cond=None, n_epochs=100, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.005, save_model=False, model_name = "MAF_final_model"):
+        
+        
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, n_epochs)
         
         update_epochs = 1
+        val_loss_to_beat = 100000000
         
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -156,6 +176,7 @@ class SimpleMAF:
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()  
+                scheduler.step()
 
             epochs.append(epoch)
             mean_loss = np.mean(losses_batch_per_e)
@@ -182,6 +203,18 @@ class SimpleMAF:
                     mean_val_loss = np.mean(val_losses_batch_per_e)
                     losses_val.append(mean_val_loss)
                     
+                    if mean_val_loss < val_loss_to_beat:
+                        val_loss_to_beat = mean_val_loss
+                        
+                        if save_model:
+
+                            model_path = f"{outdir}/{model_name}.pt"
+                            torch.save(self, model_path)
+
+                            log.info(f"The trained MAF model is saved at {model_path}.")
+
+
+                
                     if early_stop:
                         early_stopping(mean_val_loss)
             
@@ -191,13 +224,7 @@ class SimpleMAF:
                 if early_stopping.early_stop:
                     break
         
-        if save_model:
-
-            model_path = f"{outdir}/MAF_final_model.pt"
-            torch.save(self, model_path)
-
-            log.info(f"The trained MAF model is saved at {model_path}.")
-
+        
         plt.figure(figsize=(6,4))
         plt.plot(epochs, losses, label="loss")
         plt.plot(epochs_val, losses_val, label="val loss")
@@ -210,10 +237,10 @@ class SimpleMAF:
                     
 
     def sample(self, num_samples, cond=None):
-        cond = self.scaler_c.transform(cond)
+        #cond = self.scaler_c.transform(cond)
         cond = self.np_to_torch(cond).to(self.device)
         samples_feat = self.flow.sample(num_samples=num_samples, context=cond)
         samples = samples_feat.detach().cpu().numpy()
         samples = samples.reshape(samples.shape[0], samples.shape[-1])
-        unscaled_samples = self.scaler_x.inverse_transform(samples)
-        return unscaled_samples
+        #unscaled_samples = self.scaler_x.inverse_transform(samples)
+        return samples
