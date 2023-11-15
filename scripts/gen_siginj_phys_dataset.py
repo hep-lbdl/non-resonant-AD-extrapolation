@@ -6,36 +6,45 @@ from semivisible_jet.utils import *
 import os
 import sys
 
+
+sys.path.insert(0, '~/bkg_extrapolation_AD/')
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-s",
     "--sigsample",
     action="store",
     help="Input signal .txt file",
+    default="/global/cfs/cdirs/m3246/kbai/HV_samples/sig_samples/rinv13_pTmin200GeV.txt"
 )
 parser.add_argument(
     "-b1",
     "--bkg-dir",
     action="store",
     help="Input bkground .txt files",
+    default="/global/cfs/cdirs/m3246/kbai/HV_samples/qcd_data_samples/"
 )
 parser.add_argument(
     "-b2",
     "--ideal-bkg-dir",
     action="store",
     help="Input ideal bkground .txt files",
+    default="/global/cfs/cdirs/m3246/kbai/HV_samples/qcd_idealAD_samples/"
 )
 parser.add_argument(
     "-mc",
     "--mc-dir",
     action="store",
     help="Input MC bkground .txt files",
+    default="/global/cfs/cdirs/m3246/kbai/HV_samples/qcd_mc_samples/" 
 )
 parser.add_argument(
     "--size",
     action="store",
     type=int,
-    help="Input ideal bkground .txt files",
+    help="Number of bkg text files",
+    default=20
 )
 parser.add_argument(
     "-o",
@@ -85,7 +94,7 @@ def main():
 
     # define sample size as the number of files
     sample_size = args.size
-    print(f"loadging {sample_size} samples...")
+    print(f"loading {sample_size} samples...")
 
     # load signal first
     var_names = ["ht", "met", "m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
@@ -150,8 +159,9 @@ def main():
     ideal_bkg_events_SR = ideal_bkg_events[ideal_bkg_mask_SR]
 
     # initialize lists
-    sig_percent_list = np.logspace(np.log10(0.001), np.log10(0.05), 8).round(5) - 0.001
+    #sig_percent_list = np.logspace(np.log10(0.001), np.log10(0.05), 8).round(5) - 0.001
     # sig_percent_list = [0]
+    sig_percent_list = [0, 0.0025, 0.005, 0.0075, 0.012, 0.016, 0.02]
 
     # Create signal injection dataset
     num = 0
@@ -177,9 +187,10 @@ def main():
         sig_events_SR = selected_sig[sig_mask_SR]
         data_events_SR = data_events[data_mask_SR]
         rs = round(sig_events_SR.shape[0]/bkg_events_SR.shape[0], 5)
+        signif = round(sig_events_SR.shape[0]/np.sqrt(bkg_events_SR.shape[0]), 5)
 
         # Print dataset information
-        print(f"S/B={rs} in SR, N data SR: {data_events_SR.shape[0]:.1e}, N bkg SR: {bkg_events_SR.shape[0]:.1e}, N sig SR: {sig_events_SR.shape[0]}")
+        print(f"S/B={rs} in SR, S/sqrt(b) = {signif}, N data SR: {data_events_SR.shape[0]:.1e}, N bkg SR: {bkg_events_SR.shape[0]:.1e}, N sig SR: {sig_events_SR.shape[0]}")
         
         # Plot varibles
         sig_list = sig_events_SR.T
