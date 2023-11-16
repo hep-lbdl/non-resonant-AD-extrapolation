@@ -11,120 +11,22 @@ os.makedirs(os.path.dirname("./plots"), exist_ok=True)
 def get_kl_div(p,q):
     div_arr = np.where(np.logical_and(p>0,q>0),kl_div(p,q),0)
     return np.sum(div_arr)
+    
 
-def plot_gen_full_bkg(samples, x1, x2):
-    y1 = samples[:,0]
-    y2 = samples[:,1]
-    plt.figure(figsize=(6,6))
-    plt.scatter(x1, x2, alpha = 0.2, label = 'true bkg')
-    plt.scatter(y1, y2, alpha = 0.2, color = "lightgreen", label = 'generated bkg')
-    plt.axhline(y=1, color='r', linestyle='-')
-    plt.axvline(x=1, color='r', linestyle='-')
-    plt.legend()
-    plt.title("Generated full bkg distribution from training full bkg samples.")
-    plt.show
-    plt.savefig('plots/gen_full_bkg.png')
-    plt.close
-    
-def plot_gen_SRfromCR_bkg(samples, x1, x2):
-    y1 = samples[:,0]
-    y2 = samples[:,1]
-    plt.figure(figsize=(6,6))
-    plt.scatter(x1, x2, alpha = 0.2, label = 'true bkg')
-    plt.scatter(y1, y2, alpha = 0.2, color = "lightgreen", label = 'generated bkg in SR')
-    plt.axhline(y=1, color='r', linestyle='-')
-    plt.axvline(x=1, color='r', linestyle='-')
-    plt.legend()
-    plt.title("Generated full bkg distribution from training CR samples.")
-    plt.show
-    plt.savefig('plots/gen_SRfromCR_bkg.png')
-    plt.close
-    
-def plot_gen_SR_bkg_in_y_random(samples, Y_SR):
-    samples = np.array(samples)
-    plt.figure(figsize=(6,4))
-    bins = np.linspace(-5, 5, 50)
-    plt.hist(samples, bins = bins, density = True, histtype='step', label='generated SR')
-    plt.hist(Y_SR, bins = bins, density = True, histtype='step', label='true SR')
-    plt.title("Generated bkg distribution in x = random.")
-    plt.legend()
-    plt.show
-    plt.savefig('plots/gen_SR_bkg_in_y_random.png')
-    plt.close
-    
-def plot_gen_SR_bkg_in_y_cond(samples, Y_SR, k, q):
-    samples = np.array(samples)
-    bins = np.linspace(-5, 5, 50)
-    plt.figure(figsize=(6,4))
-    plt.hist(samples, bins = bins, density = True, histtype='step', label='generated SR')
-    plt.hist(Y_SR, bins = bins, density = True, histtype='step', label='true SR')
-    plt.title(f"Generated bkg in x = N(${k}\\alpha$+{q}$\\beta$, 1)")
-    plt.legend()
-    plt.show
-    plt.savefig(f'plots/gen_SR_bkg_in_y_cond{k*10}.png')
-    plt.close
-
-def pi_to_string(theta):
-    return f"({str(Fraction(theta/pi))})$\\pi$"
-    
-def plot_kl_div(Y_list, Y_list2, Y_label, Y_label2, k, theta=None, weights1=None, weights2=None, title="Normal($k(cos\\theta\\alpha + sin\\theta\\beta)$, 1)", tag = "", ymin=-6, ymax=10, outdir="plots", *args, **kwargs):
-    colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
-    
-    N = len(Y_list)
-    
-    if N==len(Y_list2) and N==len(k) and N<=len(colors):
-        bins = np.linspace(ymin, ymax, 50)
-        fig, ax1 = plt.subplots(figsize=(10,6))
-        
-        for i in range(N):
-            
-            if theta is None:
-                label_k=f"k={k[i]}"
-            elif N==len(theta):
-                label_k=f"k={k[i]}, $\\theta$={pi_to_string(theta[i])}"
-            else:
-                print("Wrong theta lists!")
-                break
-            
-            if weights1 is not None:
-                w1_i = weights1[i]
-            else:
-                w1_i = None
-                
-            if weights2 is not None:
-                w2_i = weights2[i]
-            else:
-                w2_i = None
-            
-            c0, cbins, _ = ax1.hist(Y_list[i], bins = bins, density = True, weights=w1_i, histtype='step', color=colors[i], label=f"{Y_label}, {label_k}")
-            c1, cbins, _ = ax1.hist(Y_list2[i], bins = bins, density = True, weights=w2_i, histtype='stepfilled', alpha = 0.3, color=colors[i], label=f"{Y_label2}, {label_k}")
-            kl_div = get_kl_div(c0,c1)
-            ax1.hist(Y_list2[i], bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[i], label=f"kl div={kl_div:.3f}")
-        ax1.set_title(f"Background in x = {title}", fontsize = 14)
-        ax1.set_xlabel("x")
-        plt.legend(loc='upper left', fontsize = 9)
-        plt.show
-        plot_name = f"{outdir}/{Y_label}_{Y_label2}_{tag}.png"
-        plt.savefig(plot_name.replace(" ", "_"))
-        plt.close()
-    else:
-        print("Wrong input lists!")
-        
-        
-def plot_kl_div_phys_toy(x1, x2, label1, label2, w1=None, w2=None, name="feature", tag = "", bins=50, outdir="plots", *args, **kwargs):
+def plot_kl_div_toy(x1, x2, label1, label2, w1=None, w2=None, name="feature", title = "", bins=50, outdir="plots", *args, **kwargs):
     
     colors = ['blue', 'slategrey', 'teal', 'limegreen', 'olivedrab', 'gold', 'orange', 'salmon']
     
     fig, ax1 = plt.subplots(figsize=(8,6))
     c0, cbins, _ = ax1.hist(x1, bins = bins, density = True, weights=w1, histtype='step', color=colors[2], label=label1)
-    c1, cbins, _ = ax1.hist(x2, bins = bins, density = True, weights=w2, histtype='stepfilled', alpha = 0.3, color=colors[2], label=label2)
+    c1, _, _ = ax1.hist(x2, bins = cbins, density = True, weights=w2, histtype='stepfilled', alpha = 0.3, color=colors[2], label=label2)
     kl_div = get_kl_div(c0,c1)
     ax1.hist(x2, bins = bins, density = True, histtype='stepfilled', alpha = 0, color=colors[2], label=f"kl div={kl_div:.3f}")
-    ax1.set_title(f"Background in {name}, truth vs generated", fontsize = 14)
+    ax1.set_title(title, fontsize = 14)
     ax1.set_xlabel(name)
     plt.legend(fontsize = 10)
     plt.show
-    plot_name = f"{outdir}/{label1}_{label2}_{tag}.png"
+    plot_name = f"{outdir}/{label1}_{label2}_{name}.png"
     plt.savefig(plot_name.replace(" ", "_"))
     plt.close()
         
@@ -173,22 +75,6 @@ def plot_kl_div_data_reweight(data_train, data_true, data_gen, weights, data_gen
     plt.savefig(plot_name.replace(" ", "_"))
     plt.close()
   
-    
-def plot_results(k_list, theta_list, Y_list, samples_CR_list, samples_SR_list, mask_CR, mask_SR, plot_kwargs):
-    Y_SR_list = []
-    Y_CR_list = []
-    Y_gen_CR_list = []
-    Y_gen_SR_list = []
-
-    for i in range(len(k_list)):
-        Y_SR_list.append(Y_list[i][mask_SR])
-        Y_CR_list.append(Y_list[i][mask_CR])
-        Y_gen_CR_list.append(samples_CR_list[i])
-        Y_gen_SR_list.append(samples_SR_list[i])
-
-    plot_kl_div(Y_SR_list, Y_CR_list, "true SR", "true CR", k_list, theta_list, **plot_kwargs)
-    plot_kl_div(Y_CR_list, Y_gen_CR_list, "true CR", "gen CR", k_list, theta_list, **plot_kwargs)
-    plot_kl_div(Y_SR_list, Y_gen_SR_list, "true SR", "gen SR", k_list, theta_list, **plot_kwargs)
     
     
 def plot_multi_dist(hists, labels, weights=None, htype=None, lstyle=None, title="", name="", xlabel="x", ymin=-10, ymax=10, outdir="./", *args, **kwargs):
@@ -330,7 +216,7 @@ def plot_sig_bkg_dist(sig_list, bkg_hist, labels, name="sig_vs_bkg", title="", x
     else:
         print("Wrong input lists!")
 
-def plot_all_variables(sig_list, bkg_list, xlabels, labels=["sig", "bkg"], name="sig_vs_bkg", title="", xlabel="x", outdir="./", *args, **kwargs):
+def plot_all_variables(sig_list, bkg_list, xlabels, labels=["sig", "bkg"], name="sig_vs_bkg", title="", outdir="./", *args, **kwargs):
     csig = 'brown'
     cbkg = 'royalblue'
     

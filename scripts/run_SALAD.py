@@ -3,6 +3,7 @@ import numpy as np
 from helpers.Classifier import Classifier
 from helpers.plotting import plot_multi_dist
 from helpers.utils import load_nn_config
+from helpers.process_data import *
 from semivisible_jet.utils import *
 import torch
 import os
@@ -76,24 +77,28 @@ log = logging.getLogger("run")
 log.setLevel(log_level)
 
 def load_samples():
+
     # load input files
     inputs = np.load(args.input)
-    # data MC, and bkg
-    data_feature = inputs["data_feature"]
-    data_context = inputs["data_context"]
-    MC_feature = inputs["MC_feature"]
-    MC_context = inputs["MC_context"]
-    bkg_feature = inputs["bkg_feature"]
-    bkg_context = inputs["bkg_context"]
-    # SR and CR masks
-    data_mask_CR = inputs["data_mask_CR"]
-    data_mask_SR = inputs["data_mask_SR"]
-    MC_mask_CR = inputs["MC_mask_CR"]
-    MC_mask_SR = inputs["MC_mask_SR"]
-    bkg_mask_SR = inputs["bkg_mask_SR"]
-    # Signal injected
+    data_events = inputs["data_events"]
+    mc_events = inputs["mc_events"]
+    bkg_events = inputs["bkg_events"]
     sig_percent = inputs["sig_percent"]
     inputs.close()
+
+    data_context = data_events[:, :2]
+    data_feature = data_events[:, 2:]
+    MC_context = mc_events[:, :2]
+    MC_feature = mc_events[:, 2:]
+    bkg_context = bkg_events[:, :2]
+    bkg_feature = bkg_events[:, 2:]
+
+    # Get maskes
+    data_mask_SR = toy_SR_mask(data_context) if args.toy else phys_SR_mask(data_context)
+    data_mask_CR = np.logical_not(data_mask_SR)
+    MC_mask_SR = toy_SR_mask(MC_context) if args.toy else phys_SR_mask(MC_context)
+    MC_mask_CR = np.logical_not(MC_mask_SR)
+    bkg_mask_SR = toy_SR_mask(bkg_context) if args.toy else phys_SR_mask(bkg_context)
     
     # Get feature and contexts from data
     data_feat_CR = data_feature[data_mask_CR]
@@ -110,14 +115,6 @@ def load_samples():
     # Get feature and contexts from MC
     bkg_feat_SR = bkg_feature[bkg_mask_SR]
     bkg_cond_SR = bkg_context[bkg_mask_SR]
-
-    if args.toy:
-        data_feat_CR = data_feat_CR.reshape(-1, 1)
-        data_feat_SR = data_feat_SR.reshape(-1, 1)
-        MC_feat_CR = MC_feat_CR.reshape(-1, 1)
-        MC_feat_SR = MC_feat_SR.reshape(-1, 1)
-        bkg_feat_SR = bkg_feat_SR.reshape(-1, 1)
-
 
     return data_feat_CR, data_feat_SR, data_cond_CR, data_cond_SR, MC_feat_CR, MC_feat_SR, MC_cond_CR, MC_cond_SR, bkg_feat_SR, bkg_cond_SR, sig_percent
 

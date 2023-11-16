@@ -4,6 +4,7 @@ from helpers.Classifier import Classifier
 from helpers.plotting import plot_kl_div, plot_multi_dist, plot_SIC
 from semivisible_jet.utils import *
 from helpers.utils import load_nn_config
+from helpers.process_data import *
 import torch
 import os
 import sys
@@ -65,25 +66,25 @@ log.setLevel(log_level)
 def load_samples():
     # load input files
     inputs = np.load(args.input)
-    # data, MC, and bkg
-    data_context = inputs["data_context"]
-    MC_context = inputs["MC_context"]
-    bkg_context = inputs["bkg_context"]
-    # SR and CR masks
-    data_mask_CR = inputs["data_mask_CR"]
-    MC_mask_CR = inputs["MC_mask_CR"]
-    MC_mask_SR = inputs["MC_mask_SR"]
-    bkg_mask_SR = inputs["bkg_mask_SR"]
-    # Signal injected
+    data_events = inputs["data_events"]
+    mc_events = inputs["mc_events"]
+    bkg_events = inputs["bkg_events"]
     sig_percent = inputs["sig_percent"]
     inputs.close()
+
+    data_context = data_events[:, :2]
+    MC_context = mc_events[:, :2]
+    bkg_context = bkg_events[:, :2]
+
+    # Get maskes
+    data_mask_SR = toy_SR_mask(data_context) if args.toy else phys_SR_mask(data_context)
+    MC_mask_SR = toy_SR_mask(MC_context) if args.toy else phys_SR_mask(MC_context)
+    bkg_mask_SR = toy_SR_mask(bkg_context) if args.toy else phys_SR_mask(bkg_context)
     
-    # Get contexts from data
-    data_cond_CR = data_context[data_mask_CR]
-    # Get contexts from MC
-    MC_cond_CR = MC_context[MC_mask_CR]
+    # Get contexts
+    data_cond_CR = data_context[np.logical_not(data_mask_SR)]
     MC_cond_SR = MC_context[MC_mask_SR]
-    # Get contexts from bkg
+    MC_cond_CR = MC_context[np.logical_not(MC_mask_SR)]
     bkg_cond_SR = bkg_context[bkg_mask_SR]
     
     return data_cond_CR, MC_cond_CR, MC_cond_SR, bkg_cond_SR, sig_percent

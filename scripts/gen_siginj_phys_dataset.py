@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 from math import sin, cos, pi
 from helpers.plotting import *
+from helpers.process_data import *
 from semivisible_jet.utils import *
 import os
 import sys
@@ -146,18 +147,8 @@ def main():
     print(f"N total bkg_events: {bkg_events.shape[0]:.1e}")
 
     # SR masks
-    bkg_mask_SR = apply_SR_cuts(bkg_events)
-    ideal_bkg_mask_SR = apply_SR_cuts(ideal_bkg_events)
-    MC_mask_SR = apply_SR_cuts(mc_events)
-
-    # CR masks
-    bkg_mask_CR = np.logical_not(bkg_mask_SR)
-    MC_mask_CR = np.logical_not(MC_mask_SR)
+    bkg_mask_SR = phys_SR_mask[bkg_events]
     
-    # SR events
-    bkg_events_SR = bkg_events[bkg_mask_SR]
-    ideal_bkg_events_SR = ideal_bkg_events[ideal_bkg_mask_SR]
-
     # initialize lists
     #sig_percent_list = np.logspace(np.log10(0.001), np.log10(0.05), 8).round(5) - 0.001
     # sig_percent_list = [0]
@@ -176,48 +167,33 @@ def main():
         # Create data arrays
         data_events  = np.concatenate([selected_sig, bkg_events])
 
-        # SR and CR masks
-        sig_mask_SR = apply_SR_cuts(selected_sig)
-        data_mask_SR = apply_SR_cuts(data_events)
-        
-        sig_mask_CR = np.logical_not(sig_mask_SR)
-        data_mask_CR = np.logical_not(data_mask_SR)
+        # SR masks
+        data_mask_SR = phys_SR_mask[data_events]
+        sig_mask_SR = phys_SR_mask[sig_events]
 
         # SR events
-        sig_events_SR = selected_sig[sig_mask_SR]
-        data_events_SR = data_events[data_mask_SR]
-        rs = round(sig_events_SR.shape[0]/bkg_events_SR.shape[0], 5)
-        signif = round(sig_events_SR.shape[0]/np.sqrt(bkg_events_SR.shape[0]), 5)
+        n_sig_SR = selected_sig[sig_mask_SR].shape[0]
+        s_SR = round(n_sig_SR/n_bkg_SR, 5)
+        signif = round(n_sig_SR/np.sqrt(n_bkg_SR), 5)
 
         # Print dataset information
-        print(f"S/B={rs} in SR, S/sqrt(b) = {signif}, N data SR: {data_events_SR.shape[0]:.1e}, N bkg SR: {bkg_events_SR.shape[0]:.1e}, N sig SR: {sig_events_SR.shape[0]}")
+        print(f"S/B={s_SR} in SR, S/sqrt(b) = {signif}, N bkg SR: {n_bkg_SR:.1e}, N sig SR: {n_sig_SR}")
         
         # Plot varibles
-        sig_list = sig_events_SR.T
-        bkg_list = bkg_events_SR.T
-        data_list = data_events_SR.T
+        sig_list = selected_sig[sig_mask_SR].T
+        bkg_list = bkg_events[bkg_mask_SR].T
+        data_list = data_events[data_mask_SR].T
         plot_dir = f"{outdir}/plots"
         os.makedirs(plot_dir, exist_ok=True)
         # Signal vs background
-        plot_kwargs = {"name":f"sig_vs_bkg_SR_{rs}", "title":"Signal vs background in SR", "outdir":plot_dir}
+        plot_kwargs = {"name":f"sig_vs_bkg_SR_{s_SR}", "title":"Signal vs background in SR", "outdir":plot_dir}
         plot_all_variables(sig_list, bkg_list, var_names, **plot_kwargs)
         # data vs background SR
-        plot_kwargs = {"labels":["data", "bkg"], "name":f"data_vs_bkg_SR_{rs}", "title":"Data vs background in SR", "outdir":plot_dir}
+        plot_kwargs = {"labels":["data", "bkg"], "name":f"data_vs_bkg_SR_{s_SR}", "title":"Data vs background in SR", "outdir":plot_dir}
         plot_all_variables(data_list, bkg_list, var_names, **plot_kwargs)
-
-        # Save ideal AD dataset
-        np.savez(f"./{args.outdir}/idealAD_inputs_s{num}.npz", ideal_bkg_events_SR=ideal_bkg_events_SR, data_events_SR=data_events_SR, sig_percent=rs)  
         
-        # Save extrapolation dataset
-        sig_context = selected_sig[:, :2]
-        sig_feature = selected_sig[:, 2:]
-        bkg_context = bkg_events[:, :2]
-        bkg_feature = bkg_events[:, 2:]
-        MC_context = mc_events[:, :2]
-        MC_feature = mc_events[:, 2:]
-        data_context = data_events[:, :2]
-        data_feature = data_events[:, 2:]
-        np.savez(f"./{args.outdir}/inputs_s{num}.npz", data_feature=data_feature, data_context=data_context, MC_feature=MC_feature, MC_context=MC_context, bkg_feature=bkg_feature, bkg_context=bkg_context, sig_feature = sig_feature, sig_context = sig_context, data_mask_CR=data_mask_CR, data_mask_SR=data_mask_SR, MC_mask_CR=MC_mask_CR, MC_mask_SR=MC_mask_SR, bkg_mask_CR=bkg_mask_CR, bkg_mask_SR=bkg_mask_SR, sig_mask_CR = sig_mask_CR, sig_mask_SR = sig_mask_SR, sig_percent=rs)
+        # Save dataset
+        np.savez(f"./{args.outdir}/inputs_s{num}.npz", bkg_events=bkg_events, ideal_bkg_events=ideal_bkg_events, mc_events=mc_events, data_events=data_events, sig_percent=s_SR)
     
         num += 1
         

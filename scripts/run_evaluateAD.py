@@ -6,7 +6,6 @@ from helpers.plotting import plot_SIC, plot_all_variables
 from helpers.utils import get_roc_curve
 import torch
 import os
-import sys
 import glob
 import logging
 
@@ -34,6 +33,12 @@ parser.add_argument(
     help="output directory",
 )
 parser.add_argument(
+    "--toy",
+    action="store_true",
+    default=False,
+    help="Load toy samples.",
+)
+parser.add_argument(
     "-v",
     "--verbose",
     action="store_true",
@@ -50,6 +55,16 @@ log = logging.getLogger("run")
 log.setLevel(log_level)
 
 
+def load_samples():
+    # load input files
+    inputs = np.load(args.input)
+    sig_SR= inputs["sig_events_SR"] if args.toy else inputs["sig_events_SR"][:, 2:]
+    bkg_SR= inputs["bkg_events_SR"] if args.toy else inputs["bkg_events_SR"][:, 2:]
+    inputs.close()
+    
+    return sig_SR, bkg_SR
+
+
 def main():
 
     # # selecting appropriate device
@@ -59,13 +74,8 @@ def main():
     
     os.makedirs(args.outdir, exist_ok=True)
         
-    # load input files
-    inputs = np.load(args.input)
-    # sig and bkg
-    sig_SR= inputs["sig_events_SR"][:, 2:]
-    bkg_SR= inputs["bkg_events_SR"][:, 2:]
-    inputs.close()
-    
+    sig_SR, bkg_SR = load_samples()
+
     # Create testing data set for classifier
     input_x = np.concatenate([sig_SR, bkg_SR], axis=0)
     
@@ -73,6 +83,10 @@ def main():
     sig_SR_label = np.ones(sig_SR.shape[0])
     bkg_SR_label = np.zeros(bkg_SR.shape[0])
     input_y = np.concatenate([sig_SR_label, bkg_SR_label], axis=0).reshape(-1,1)
+
+    if args.toy:
+        plot_kwargs = {"name":f"sig_vs_bkg_testset_for_evaluation", "title":f"N sig={len(sig_SR)}, N bkg={len(bkg_SR)}", "outdir":args.outdir}
+        plot_all_variables([sig_SR[:, 0], sig_SR[:, 1], sig_SR[:, 2]], [bkg_SR[:, 0], bkg_SR[:, 1], bkg_SR[:, 2]], ["m1", "m2", "x"], **plot_kwargs)
 
     if args.verbose:
         # Plot varibles
