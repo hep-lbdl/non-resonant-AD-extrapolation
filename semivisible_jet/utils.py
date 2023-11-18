@@ -7,7 +7,7 @@ def name_map():
     return {
         "m_jj": "$m_{{\\rm jj}}$",
         "met": "MET",
-        "ht": "H_{\rm T}",
+        "ht": "$H_{{\\rm T}}$",
         "pT_j1": "Leading jet $p_{{\\rm T}}$",
         "pT_j2": "Sub-leading jet $p_{{\\rm T}}$",
         "tau21_j1": "Leading jet $\\tau_2/\\tau_1$",
