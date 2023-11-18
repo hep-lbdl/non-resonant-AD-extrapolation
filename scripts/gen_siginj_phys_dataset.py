@@ -144,7 +144,6 @@ def main():
     ideal_bkg_events = np.concatenate(ideal_bkg_events_list)
     mc_events = np.concatenate(mc_events_list)
     
-    print(f"N total bkg_events: {bkg_events.shape[0]:.1e}")
 
     # SR masks
     bkg_mask_SR = phys_SR_mask[bkg_events]

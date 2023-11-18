@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
-
+import sys
 
 def name_map():
     return {
@@ -39,6 +39,7 @@ def load_samples(file):
     events = np.asfarray(samples[1:])
     return variables, events
 
+
 def sort_event_arr(names, variables, events):
     
     event_list = []
@@ -48,6 +49,21 @@ def sort_event_arr(names, variables, events):
         event_list.append(events[:, ind_x])
     
     return np.stack(event_list, axis=1)
+
+
+def apply_SR_cuts(events):
+
+    # define SR and CR masks
+    HT_cut = 600    # In SR, HT > 600 GeV
+    MET_cut = 75    # In SR, MET > 75 GeV
+    
+    # SR masks
+    if events.shape[1]>1:
+        mask_SR = (events[:, 0] > HT_cut) & (events[:, 1] > MET_cut)
+        return mask_SR
+    else:
+        sys.exit(f"Wrong input events array. Array dim {events.shape[1]}, must be >= 2. Exiting...")
+
 
 def ind(variables, name):
     return np.where(variables == name)[0][0]

@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# options=("CATHODE" "FETA" "SALAD" "idealAD")
-options=("FETA")
+options=("CATHODE" "FETA" "SALAD" "idealAD")
 
 
 task_reweighting () {
