@@ -123,7 +123,7 @@ class Classifier():
         
         return train_dataloader, val_dataloader
     
-    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.00001, save_model=False, model_name="classifier"):
+    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.00001, save_model=False, model_name="classifier", plot_loss=True):
         
         update_epochs = 1
         # save the best model
@@ -217,15 +217,15 @@ class Classifier():
         else:
             log.info(f"Done training classifier. The best epoch is {best_epoch}. Model is not saved.")
         
-        
-        plt.figure(figsize=(6,4))
-        plt.plot(epochs, losses, label="loss")
-        plt.plot(epochs, losses_val, label="val loss")
-        plt.xlabel("number of epochs")
-        plt.ylabel("loss")
-        plt.legend()
-        plt.savefig(f"{outdir}/{model_name}_loss.png")
-        plt.close()
+        if plot_loss:
+            plt.figure(figsize=(6,4))
+            plt.plot(epochs, losses, label="loss")
+            plt.plot(epochs, losses_val, label="val loss")
+            plt.xlabel("number of epochs")
+            plt.ylabel("loss")
+            plt.legend()
+            plt.savefig(f"{outdir}/{model_name}_loss.png")
+            plt.close()
         
 
     
