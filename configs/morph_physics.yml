@@ -1,0 +1,12 @@
+base:
+    n_layers: 1
+    n_hidden_features: 8
+    learning_rate: 0.001
+    batch_size: 512
+    n_epochs: 4
+top:
+    n_layers: 1
+    n_hidden_features: 8
+    learning_rate: 0.001
+    batch_size: 512
+    n_epochs: 4
