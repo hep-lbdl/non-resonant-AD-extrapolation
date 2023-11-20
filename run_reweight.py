@@ -87,7 +87,7 @@ def main():
     mc_events_cr = mc_events["mc_events_cr"]
     mc_events_sr = mc_events["mc_events_sr"]
     
-    print("Working with s/b = ", args.signal, ". CR has", len(data_events_cr), "events, SR has", len(data_events_sr), "events.")
+    print("Working with s/b =", args.signal, ". CR has", len(data_events_cr), "events, SR has", len(data_events_sr), "events.")
 
     # Train flow in the CR
     # To do the closure tests, we need to withhold a small amount of CR data
@@ -101,8 +101,8 @@ def main():
     input_x_train_CR = np.concatenate([mc_cr_train, data_cr_train], axis=0)
     # create labels for classifier
     mc_cr_label = np.zeros(mc_cr_train.shape[0]).reshape(-1,1)
-    data_xr_label = np.ones(data_cr_train.shape[0]).reshape(-1,1)
-    input_y_train_CR = np.concatenate([MC_CR_label, data_CR_label], axis=0)
+    data_cr_label = np.ones(data_cr_train.shape[0]).reshape(-1,1)
+    input_y_train_CR = np.concatenate([mc_cr_label, data_cr_label], axis=0)
 
     if args.config is not None:
         with open(args.config, 'r') as stream:
@@ -118,7 +118,7 @@ def main():
         n_epochs = 50
         
     # Define the network
-     NN_reweight = Classifier(n_inputs=7, layers=layers, learning_rate=learning_rate, device=device, outdir=model_dir)
+    NN_reweight = Classifier(n_inputs=7, layers=layers, learning_rate=learning_rate, device=device)
         
     # Model in
     load_model = args.load_model
@@ -135,7 +135,7 @@ def main():
 
     if not load_model:   
         print("Training Reweight model...")
-        NN_reweight_train.train(input_x_train_CR, input_y_train_CR, save_model=True, batch_size=batch_size, n_epochs=n_epochs)
+        NN_reweight.train(input_x_train_CR, input_y_train_CR, save_model=True, batch_size=batch_size, n_epochs=n_epochs,model_name="reweight_best", outdir=model_dir)
         print("Done training!")
         
     # evaluate weights in CR
@@ -148,11 +148,7 @@ def main():
     np.save(f"{sampled_ourdir}/SALAD_full_w_CR_test_{s_inj}", w_CR)
     np.save(f"{sampled_ourdir}/SALAD_full_data_CR_test_{s_inj}", data_CR_test_SALAD)
 
-
-    # ## Generate SR samples
-
-    # In[7]:
-
+    print("Making samples...")
 
     model_path = f"{model_outdir}/SALAD_full_{s_inj}.pt"
     NN_reweight = torch.load(f"{model_path}")

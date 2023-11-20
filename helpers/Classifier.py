@@ -61,8 +61,7 @@ class Classifier():
                  layers=[64,64,64], 
                  learning_rate=1e-3, 
                  loss_type="binary_crossentropy", 
-                 device="cpu",
-                 outdir="./"):
+                 device="cpu",):
 
         self.n_inputs = n_inputs
         self.device = device
@@ -77,17 +76,12 @@ class Classifier():
             raise NotImplementedError
         
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)        
-        
-        os.makedirs(outdir, exist_ok=True)
-        self.outdir = outdir
+
         
     def to(self, device):
         self.device = device
         self.model.to(device)
 
-    def set_outdir(self, outdir_path):
-        self.outdir = outdir_path
-    
     def np_to_torch(self, array):
     
         return torch.tensor(array.astype(np.float32))
@@ -129,7 +123,7 @@ class Classifier():
         
         return train_dataloader, val_dataloader
     
-    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, early_stop=True, patience=5, min_delta=0.00001, save_model=False, model_name=""):
+    def train(self, input_x, input_y, n_epochs=200, batch_size=512, weights=None, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.00001, save_model=False, model_name="classifier"):
         
         update_epochs = 1
         # save the best model
@@ -206,7 +200,7 @@ class Classifier():
                     best_epoch = epoch
                     # save the model
                     if save_model:
-                        model_path = f"{self.outdir}/trained_AD_classifier{model_name}.pt"
+                        model_path = f"{outdir}/{model_name}.pt"
                         torch.save(self, model_path)
 
 
@@ -230,13 +224,12 @@ class Classifier():
         plt.xlabel("number of epochs")
         plt.ylabel("loss")
         plt.legend()
-        timestamp = datetime.now().strftime("%m-%d-%H%M%S")
-        plt.savefig(f"{self.outdir}/classfier_loss_{timestamp}.png")
+        plt.savefig(f"{outdir}/{model_name}_loss.png")
         plt.close()
         
 
     
-    def evaluation(self, X_test, y_test=None, weights=None, model_name=""):
+    def evaluation(self, X_test):
         
         self.model.eval()
         
@@ -244,9 +237,5 @@ class Classifier():
             X_test = self.scaler.transform(X_test)
             x_test = self.np_to_torch(X_test).to(self.device)
             outputs = self.model(x_test).detach().cpu().numpy()
-            
-        # calculate auc 
-        if y_test is not None:
-            get_roc_curve(outputs, y_test, outdir=self.outdir, model_name=model_name, weights=weights)
             
         return outputs

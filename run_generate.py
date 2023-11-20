@@ -88,7 +88,7 @@ def main():
     mc_events = np.load(f"{args.input}/mc_events.npz")
     mc_events_sr = mc_events["mc_events_sr"]
     
-    print("Working with s/b = ", args.signal, ". CR has", len(data_events_cr), "events, SR has", len(data_events_sr), "events.")
+    print("Working with s/b =", args.signal, ". CR has", len(data_events_cr), "events, SR has", len(data_events_sr), "events.")
 
     # Train flow in the CR
     # To do the closure tests, we need to withhold a small amount of CR data
@@ -119,7 +119,7 @@ def main():
         batch_size = 256
         n_epochs = 20
          
-    # efine the flow
+    # Define the flow
     MAF = SimpleMAF(num_features=n_features, num_context=n_context, device=device, num_layers=n_layers, num_hidden_features=n_hidden_features, learning_rate = learning_rate)
     
     # Model in
@@ -140,7 +140,8 @@ def main():
 
         MAF.train(data=data_feature_cr_train, cond=data_context_cr_train, batch_size=batch_size, n_epochs=n_epochs, outdir=model_dir, save_model=True, model_name="generate_best")
         print("Done training!")
-
+        
+    print("Making samples...")
     # sample CR from data
     pred_bkg_CR = MAF.sample(1, data_context_cr_test)
     np.savez(f"{samples_dir}/generate_CR_closure_s{args.signal}.npz", target_cr=data_feature_cr_test, generate_cr=pred_bkg_CR)

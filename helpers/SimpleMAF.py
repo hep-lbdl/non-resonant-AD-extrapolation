@@ -43,11 +43,7 @@ class SimpleMAF:
         
         self.nfeat = num_features
         self.ncond = num_context
-        
-        # Scaler transform for preprocessing
-        #self.scaler_x = StandardScaler()
-        #self.scaler_c = StandardScaler()
- 
+
         if base_dist is not None:
             self.base_dist = base_dist
             # set the base flow to be static
@@ -139,7 +135,7 @@ class SimpleMAF:
         return train_data, val_data
         
     
-    def train(self, data, cond=None, n_epochs=100, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.005, save_model=False, model_name = "MAF_final_model"):
+    def train(self, data, cond=None, n_epochs=100, batch_size=512, seed=1, outdir="./", early_stop=True, patience=5, min_delta=0.005, save_model=False, model_name = "MAF_model"):
         
         
         scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, n_epochs)
@@ -210,10 +206,6 @@ class SimpleMAF:
 
                             model_path = f"{outdir}/{model_name}.pt"
                             torch.save(self, model_path)
-
-                            log.info(f"The trained MAF model is saved at {model_path}.")
-
-
                 
                     if early_stop:
                         early_stopping(mean_val_loss)
@@ -222,9 +214,10 @@ class SimpleMAF:
         
             if early_stop:
                 if early_stopping.early_stop:
-                    break
-        
-        
+                    log.info("Early stopping.")
+                    break  
+                    
+        log.info(f"Model stopped training at epoch {epoch}.")
         plt.figure(figsize=(6,4))
         plt.plot(epochs, losses, label="loss")
         plt.plot(epochs_val, losses_val, label="val loss")
@@ -232,12 +225,11 @@ class SimpleMAF:
         plt.ylabel("loss")
         plt.legend()
         plt.show
-        plt.savefig(f"{outdir}/MAF_loss.png")
+        plt.savefig(f"{outdir}/{model_name}_loss.png")
         plt.close
                     
 
     def sample(self, num_samples, cond=None):
-        #cond = self.scaler_c.transform(cond)
         cond = self.np_to_torch(cond).to(self.device)
         samples_feat = self.flow.sample(num_samples=num_samples, context=cond)
         samples = samples_feat.detach().cpu().numpy()
