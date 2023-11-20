@@ -7,43 +7,22 @@ from semivisible_jet.utils import *
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-s",
-    "--sigsample",
-    action="store",
-    help="Input signal .txt file",
+parser.add_argument( "-s", "--sigsample",help="Input signal .txt file",
     default="/global/cfs/cdirs/m3246/kbai/HV_samples/analysis_input_testset/rinv13_pTmin200GeV.txt"
 )
-
-parser.add_argument(
-    "-b",
-    "--bkg-dir",
-    action="store",
-    help="Input bkground .txt files",
+parser.add_argument("-b","--bkg-dir",help="Input bkground folder",
     default="/global/cfs/cdirs/m3246/kbai/HV_samples/qcd_test_samples/" 
 )
+parser.add_argument( "-size", type=int,help="Number of bkg text files",default=20)
+parser.add_argument("-o","--outdir",help="output directory")
 
-parser.add_argument(
-    "-size",
-    action="store",
-    type=int,
-    help="Number of bkg text files",
-    default=20
-)
-parser.add_argument(
-    "-o",
-    "--outdir",
-    action="store",
-    default="outputs",
-    help="output directory",
-)
 args = parser.parse_args()
 
 def main():
 
     # Create the output directory
-    outdir = args.outdir
-    os.makedirs(outdir, exist_ok=True)
+    data_dir = f"{args.outdir}/data/"
+    os.makedirs(data_dir, exist_ok=True)
     
     # define sample size as the number of files
     sample_size = args.size
@@ -93,7 +72,7 @@ def main():
     print(f"Fully supervised dataset in SR: N sig={len(sig_fullsup_SR)}, N bkg={len(bkg_fullsup_SR)}")
 
     # Plot varibles
-    plot_dir = f"{outdir}/plots"
+    plot_dir = f"{data_dir}/plots"
     os.makedirs(plot_dir, exist_ok=True)
     sig_list = sig_events_SR.T
     bkg_list = bkg_events_SR.T
@@ -101,8 +80,8 @@ def main():
     plot_all_variables(sig_list, bkg_list, var_names, **plot_kwargs)
 
     # Save dataset
-    np.savez(f"{args.outdir}/test_SR.npz", bkg_events_SR=bkg_test_SR, sig_events_SR=sig_test_SR)
-    np.savez(f"{args.outdir}/fullsup_SR.npz", bkg_events_SR=bkg_fullsup_SR, sig_events_SR=sig_fullsup_SR)
+    np.savez(f"{data_dir}/test_SR.npz", bkg_events_SR=bkg_test_SR, sig_events_SR=sig_test_SR)
+    np.savez(f"{data_dir}/fullsup_SR.npz", bkg_events_SR=bkg_fullsup_SR, sig_events_SR=sig_fullsup_SR)
     
         
     print(f"Finished generating datasets.")
