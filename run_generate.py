@@ -7,64 +7,22 @@ import logging
 import yaml
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-i",
-    "--input",
-    help="home folder for input training samples and conditional inputs",
-    default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/data/"
-)
-
-parser.add_argument(
-    "-s",
-    "--signal",
-    default=None,
-    help="signal fraction",
-)
-
-parser.add_argument(
-    "-c",
-    "--config",
-    help="Generate flow config file",
-    default="configs/generate_physics.yml"
-)
-
-parser.add_argument(
-    '-l', 
-    "--load_model",
-    default=False,
-    help='Load best trained model.'
-)
-
-parser.add_argument(
-    '-m', 
-    "--model_path",
-    help='Path to best trained model'
-)
-
-parser.add_argument(
-    "--oversample",
-    default=1,
-    help="Oversampling",
-)
-parser.add_argument(
-    "-o",
-    "--outdir",
-    help="output directory",
+parser.add_argument("-i","--indir",help="working folder",
     default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/"
 )
-
-parser.add_argument(
-    "-v",
-    "--verbose",
-    default=False,
-    help="Verbose enable DEBUG",
+parser.add_argument("-s","--signal",default=None,help="signal fraction",)
+parser.add_argument("-c","--config",help="Generate flow config file",
+    default="configs/generate_physics.yml"
 )
+parser.add_argument('-l',"--load_model",default=False,help='Load best trained model.')
+parser.add_argument('-m', "--model_path",help='Path to best trained model')
+parser.add_argument("--oversample",default=1,help="Oversampling",)
+parser.add_argument("-o","--outdir", help="output directory",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
+parser.add_argument("-v","--verbose",default=False,help="Verbose enable DEBUG",)
+
 args = parser.parse_args()
-
 logging.basicConfig(level=logging.INFO)
-
 log_level = logging.DEBUG if args.verbose else logging.INFO
-    
 log = logging.getLogger("run")
 log.setLevel(log_level)
 
@@ -75,13 +33,14 @@ def main():
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
     
+    data_dir = f"{args.indir}/data/"
     model_dir = f"{args.outdir}/models/"
     samples_dir = f"{args.outdir}/samples/"
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(samples_dir, exist_ok=True)
         
     # load input files
-    data_events = np.load(f"{args.input}/data_{args.signal}.npz")
+    data_events = np.load(f"{data_dir}/data_{args.signal}.npz")
     data_events_cr = data_events["data_events_cr"]
     data_events_sr = data_events["data_events_sr"]
     

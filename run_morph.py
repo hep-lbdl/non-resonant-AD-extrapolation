@@ -7,73 +7,21 @@ import logging
 import yaml
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-i",
-    "--input",
-    help="home folder for input training samples and conditional inputs",
-    default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/data/"
-)
-
-parser.add_argument(
-    "-s",
-    "--signal",
-    default=None,
-    help="signal fraction",
-)
-
-parser.add_argument(
-    "-c",
-    "--config",
-    help="Morph flows config file",
-    default="configs/morph_physics.yml"
-)
-
-parser.add_argument(
-    '-lb', 
-    "--load_model_base",
-    default=False,
-    help='Load best trained base model.'
-)
-
-parser.add_argument(
-    '-bm', 
-    "--model_path_base",
-    help='Path to best trained base model'
-)
-
-parser.add_argument(
-    '-lt', 
-    "--load_model_top",
-    default=False,
-    help='Load best trained top model.'
-)
-
-parser.add_argument(
-    '-tm', 
-    "--model_path_top",
-    help='Path to best trained top model'
-)
-
-parser.add_argument(
-    "-o",
-    "--outdir",
-    help="output directory",
+parser.add_argument("-i","--indir",help="working folder",
     default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/"
 )
+parser.add_argument("-s","--signal",default=None,help="signal fraction",)
+parser.add_argument("-c","--config",help="Morph flows config file",default="configs/morph_physics.yml")
+parser.add_argument('-lb', "--load_model_base",default=False,help='Load best trained base model.')
+parser.add_argument('-bm', "--model_path_base",help='Path to best trained base model')
+parser.add_argument('-lt', "--load_model_top",default=False,help='Load best trained top model.')
+parser.add_argument('-tm', "--model_path_top",help='Path to best trained top model')
+parser.add_argument("-o","--outdir", help="output directory",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
+parser.add_argument("-v","--verbose",default=False,help="Verbose enable DEBUG",)
 
-parser.add_argument(
-    "-v",
-    "--verbose",
-    default=False,
-    help="Verbose enable DEBUG",
-)
 args = parser.parse_args()
-
-
 logging.basicConfig(level=logging.INFO)
-
 log_level = logging.DEBUG if args.verbose else logging.INFO
-    
 log = logging.getLogger("run")
 log.setLevel(log_level)
 
@@ -85,6 +33,7 @@ def main():
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
     
+    data_dir = f"{args.indir}/data/"
     model_dir = f"{args.outdir}/models/"
     samples_dir = f"{args.outdir}/samples/"
     os.makedirs(model_dir, exist_ok=True)

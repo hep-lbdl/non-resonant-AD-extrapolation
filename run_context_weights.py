@@ -11,7 +11,7 @@ parser.add_argument("-i","--indir",help="working folder",
     default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/"
 )
 parser.add_argument("-s","--signal",default=None,help="signal fraction",)
-parser.add_argument("-c","--config",help="Reweight NN config file",default="configs/reweight_physics.yml")
+parser.add_argument("-c","--config",help="Reweight NN config file",default="configs/context_weights_physics.yml")
 parser.add_argument('-l', "--load_model",default=False,help='Load best trained model.')
 parser.add_argument('-m',  "--model_path",help='Path to best trained model')
 parser.add_argument("-o","--outdir",help="output directory",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
@@ -52,11 +52,12 @@ def main():
     # Train flow in the CR
     # To do the closure tests, we need to withhold a small amount of CR data
     n_withold = 10000 
+    n_context = 2
     
-    data_cr_train = data_events_cr[:-n_withold]
-    data_cr_test = data_events_cr[-n_withold:]
-    mc_cr_train = mc_events_cr[:-n_withold]
-    mc_cr_test = mc_events_cr[-n_withold:]
+    data_cr_train = data_events_cr[:-n_withold,:n_context]
+    data_cr_test = data_events_cr[-n_withold:,:n_context]
+    mc_cr_train = mc_events_cr[:-n_withold,:n_context]
+    mc_cr_test = mc_events_cr[-n_withold:,:n_context]
 
     input_x_train_CR = np.concatenate([mc_cr_train, data_cr_train], axis=0)
     # create labels for classifier
@@ -69,7 +70,7 @@ def main():
         params = yaml.safe_load(stream)
         
     # Define the network
-    NN_reweight = Classifier(n_inputs=7, layers=params["layers"], learning_rate=params["learning_rate"], device=device)
+    NN_reweight = Classifier(n_inputs=n_context, layers=params["layers"], learning_rate=params["learning_rate"], device=device)
         
     # Model in
     load_model = args.load_model
