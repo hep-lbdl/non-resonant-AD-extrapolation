@@ -104,23 +104,11 @@ def main():
     mc_context_sr = mc_events_sr[:,:n_context]
     mc_feature_sr = mc_events_sr[:,n_context:]
     
-    if args.config is not None:
-        with open(args.config, 'r') as stream:
-            params = yaml.safe_load(stream)
-            n_layers = params["n_layers"]
-            n_hidden_features = params["n_hidden_features"]
-            learning_rate = params["learning_rate"]
-            batch_size = params["batch_size"]
-            n_epochs = params["n_epochs"]
-    else:
-        n_layers = 1
-        n_hidden_features = 8
-        learning_rate = 0.0001
-        batch_size = 256
-        n_epochs = 20
+    with open(args.config, 'r') as stream:
+        params = yaml.safe_load(stream)
          
     # Define the flow
-    MAF = SimpleMAF(num_features=n_features, num_context=n_context, device=device, num_layers=n_layers, num_hidden_features=n_hidden_features, learning_rate = learning_rate)
+    MAF = SimpleMAF(num_features=n_features, num_context=n_context, device=device, num_layers=params["n_layers"], num_hidden_features=params["n_hidden_features"], learning_rate = params["learning_rate"])
     
     # Model in
     load_model = args.load_model
@@ -138,7 +126,7 @@ def main():
     if not load_model:   
         print("Training Generate model...")
 
-        MAF.train(data=data_feature_cr_train, cond=data_context_cr_train, batch_size=batch_size, n_epochs=n_epochs, outdir=model_dir, save_model=True, model_name="generate_best")
+        MAF.train(data=data_feature_cr_train, cond=data_context_cr_train, batch_size=params["batch_size"], n_epochs=params["n_epochs"], outdir=model_dir, save_model=True, model_name=f"generate_best_s{args.signal}")
         print("Done training!")
         
     print("Making samples...")

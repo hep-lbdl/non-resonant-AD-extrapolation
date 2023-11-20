@@ -104,21 +104,12 @@ def main():
     data_cr_label = np.ones(data_cr_train.shape[0]).reshape(-1,1)
     input_y_train_CR = np.concatenate([mc_cr_label, data_cr_label], axis=0)
 
-    if args.config is not None:
-        with open(args.config, 'r') as stream:
-            params = yaml.safe_load(stream)
-            layers = params["layers"]
-            learning_rate = params["learning_rate"]
-            batch_size = params["batch_size"]
-            n_epochs = params["n_epochs"]
-    else:
-        layers = [32,32]
-        learning_rate = 0.0001
-        batch_size = 512
-        n_epochs = 50
+    
+    with open(args.config, 'r') as stream:
+        params = yaml.safe_load(stream)
         
     # Define the network
-    NN_reweight = Classifier(n_inputs=7, layers=layers, learning_rate=learning_rate, device=device)
+    NN_reweight = Classifier(n_inputs=7, layers=params["layers"], learning_rate=params["learning_rate"], device=device)
         
     # Model in
     load_model = args.load_model
@@ -135,25 +126,10 @@ def main():
 
     if not load_model:   
         print("Training Reweight model...")
-        NN_reweight.train(input_x_train_CR, input_y_train_CR, save_model=True, batch_size=batch_size, n_epochs=n_epochs,model_name="reweight_best", outdir=model_dir)
+        NN_reweight.train(input_x_train_CR, input_y_train_CR, save_model=True, batch_size=params["batch_size"], n_epochs=params["n_epochs"], model_name=f"reweight_best_s{args.signal}", outdir=model_dir)
         print("Done training!")
-        
-    # evaluate weights in CR
-    w_CR = NN_reweight.evaluation(MC_CR_test_SALAD)
-    w_CR = (w_CR/(1.-w_CR)).flatten()
-
-
-
-    np.save(f"{sampled_ourdir}/SALAD_full_MC_CR_test_{s_inj}", MC_CR_test_SALAD)
-    np.save(f"{sampled_ourdir}/SALAD_full_w_CR_test_{s_inj}", w_CR)
-    np.save(f"{sampled_ourdir}/SALAD_full_data_CR_test_{s_inj}", data_CR_test_SALAD)
 
     print("Making samples...")
-
-    model_path = f"{model_outdir}/SALAD_full_{s_inj}.pt"
-    NN_reweight = torch.load(f"{model_path}")
-    NN_reweight.to(device)
-
     # evaluate weights in CR
     w_cr = NN_reweight.evaluation(mc_cr_test)
     w_cr = (w_cr/(1.-w_cr)).flatten()
