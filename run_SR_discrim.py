@@ -58,9 +58,8 @@ def run_eval(set_1, set_2, test_B, test_S, code, save_dir, classifier_params, de
         NN.train(input_x_train, input_y_train, weights=input_w_train,  save_model=True, model_name = f"model_{local_id}" , n_epochs=classifier_params["n_epochs"], seed = i, outdir=save_dir, plot_loss=False)
 
         scores = NN.evaluation(input_x_test)
-        fpr, tpr, _ = roc_curve(input_y_test, scores)
-        #np.save(f"{save_dir}/fpr_{local_id}",fpr)
-        #np.save(f"{save_dir}/tpr_{local_id}",tpr)
+        auc = roc_auc_score(input_y_test, scores)
+        print(f"   AUC: {auc}")
                 
     print()
 

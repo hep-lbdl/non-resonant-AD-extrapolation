@@ -126,7 +126,7 @@ def main():
     pred_bkg_CR, _ = transport_flow.flow._transform.inverse(mc_feature_cr_test, mc_context_cr_test)
     pred_bkg_CR = pred_bkg_CR.detach().cpu().numpy()
 
-    np.savez(f"{samples_dir}/morph_CR_closure_s{args.signal}.npz", target_cr=data_feature_cr_test, generate_cr=pred_bkg_CR)
+    np.savez(f"{samples_dir}/morph_CR_closure_s{args.signal}.npz", target_cr=data_feature_cr_test, morph_cr=pred_bkg_CR)
 
     
     # SR samples
