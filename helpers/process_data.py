@@ -36,6 +36,19 @@ def toy_SR_mask(events):
     else:
         sys.exit(f"Wrong input events array. Array dim {events.shape[1]}, must be >= 2. Exiting...")
 
+def phys_SR_mask(events):
+
+    # define SR and CR masks
+    HT_cut = 600    # In SR, HT > 600 GeV
+    MET_cut = 75    # In SR, MET > 75 GeV
+
+    # SR masks
+    if events.shape[1]>1:
+        mask_SR = (events[:, 0] > HT_cut) & (events[:, 1] > MET_cut)
+        return mask_SR
+    else:
+        sys.exit(f"Wrong input events array. Array dim {events.shape[1]}, must be >= 2. Exiting...")
+        
 
 def get_quality_events(arr):
 

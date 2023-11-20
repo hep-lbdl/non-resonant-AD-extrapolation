@@ -16,7 +16,7 @@ parser.add_argument('-lb', "--load_model_base",default=False,help='Load best tra
 parser.add_argument('-bm', "--model_path_base",help='Path to best trained base model')
 parser.add_argument('-lt', "--load_model_top",default=False,help='Load best trained top model.')
 parser.add_argument('-tm', "--model_path_top",help='Path to best trained top model')
-parser.add_argument("-o","--outdir", help="output directory",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
+parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
 parser.add_argument("-v","--verbose",default=False,help="Verbose enable DEBUG",)
 
 args = parser.parse_args()
@@ -33,18 +33,19 @@ def main():
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
     
-    data_dir = f"{args.indir}/data/"
-    model_dir = f"{args.outdir}/models/"
-    samples_dir = f"{args.outdir}/samples/"
+    static_data_dir = f"{args.indir}/data/"
+    seeded_data_dir = f"{args.indir}/data/seed{args.gen_seed}/"
+    model_dir = f"{args.indir}/models/seed{args.gen_seed}/"
+    samples_dir = f"{args.indir}/samples/seed{args.gen_seed}/"
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(samples_dir, exist_ok=True)
         
     # load input files
-    data_events = np.load(f"{args.input}/data_{args.signal}.npz")
+    data_events = np.load(f"{seeded_data_dir}/data_{args.signal}.npz")
     data_events_cr = data_events["data_events_cr"]
     data_events_sr = data_events["data_events_sr"]
     
-    mc_events = np.load(f"{args.input}/mc_events.npz")
+    mc_events = np.load(f"{static_data_dir}/mc_events.npz")
     mc_events_cr = mc_events["mc_events_cr"]
     mc_events_sr = mc_events["mc_events_sr"]
     

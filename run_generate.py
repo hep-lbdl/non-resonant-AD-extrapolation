@@ -11,14 +11,12 @@ parser.add_argument("-i","--indir",help="working folder",
     default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/"
 )
 parser.add_argument("-s","--signal",default=None,help="signal fraction",)
-parser.add_argument("-c","--config",help="Generate flow config file",
-    default="configs/generate_physics.yml"
-)
-parser.add_argument('-l',"--load_model",default=False,help='Load best trained model.')
-parser.add_argument('-m', "--model_path",help='Path to best trained model')
-parser.add_argument("--oversample",default=1,help="Oversampling",)
-parser.add_argument("-o","--outdir", help="output directory",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
-parser.add_argument("-v","--verbose",default=False,help="Verbose enable DEBUG",)
+parser.add_argument("-c","--config",help="Generate flow config file",default="configs/generate_physics.yml")
+parser.add_argument('-l', "--load_model",action='store_true',help='Load best trained model.')
+parser.add_argument('-m',  "--model_path",help='Path to best trained model')
+parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
+parser.add_argument("-o","--oversample",help="How much to oversample the model",default=1)
+parser.add_argument( "-v", "--verbose",default=False,help="Verbose enable DEBUG")
 
 args = parser.parse_args()
 logging.basicConfig(level=logging.INFO)
@@ -33,18 +31,19 @@ def main():
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
     
-    data_dir = f"{args.indir}/data/"
-    model_dir = f"{args.outdir}/models/"
-    samples_dir = f"{args.outdir}/samples/"
+    static_data_dir = f"{args.indir}/data/"
+    seeded_data_dir = f"{args.indir}/data/seed{args.gen_seed}/"
+    model_dir = f"{args.indir}/models/seed{args.gen_seed}/"
+    samples_dir = f"{args.indir}/samples/seed{args.gen_seed}/"
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(samples_dir, exist_ok=True)
         
     # load input files
-    data_events = np.load(f"{data_dir}/data_{args.signal}.npz")
+    data_events = np.load(f"{seeded_data_dir}/data_{args.signal}.npz")
     data_events_cr = data_events["data_events_cr"]
     data_events_sr = data_events["data_events_sr"]
     
-    mc_events = np.load(f"{args.input}/mc_events.npz")
+    mc_events = np.load(f"{static_data_dir}/mc_events.npz")
     mc_events_sr = mc_events["mc_events_sr"]
     
     print("Working with s/b =", args.signal, ". CR has", len(data_events_cr), "events, SR has", len(data_events_sr), "events.")
@@ -94,8 +93,7 @@ def main():
     np.savez(f"{samples_dir}/generate_CR_closure_s{args.signal}.npz", target_cr=data_feature_cr_test, generate_cr=pred_bkg_CR)
 
     # sample from MAF
-    n_sample = 1 if args.oversample else 1
-    pred_bkg_SR = MAF.sample(n_sample, mc_context_sr)
+    pred_bkg_SR = MAF.sample(args.oversample, mc_context_sr)
 
     # save generated samples
     np.savez(f"{samples_dir}/generate_SR_s{args.signal}.npz", samples = pred_bkg_SR)

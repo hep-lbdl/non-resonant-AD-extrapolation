@@ -12,9 +12,9 @@ parser.add_argument("-i","--indir",help="working folder",
 )
 parser.add_argument("-s","--signal",default=None,help="signal fraction",)
 parser.add_argument("-c","--config",help="Reweight NN config file",default="configs/context_weights_physics.yml")
-parser.add_argument('-l', "--load_model",default=False,help='Load best trained model.')
+parser.add_argument('-l', "--load_model",action='store_true',help='Load best trained model.')
 parser.add_argument('-m',  "--model_path",help='Path to best trained model')
-parser.add_argument("-o","--outdir",help="output directory",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
+parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
 parser.add_argument( "-v", "--verbose",default=False,help="Verbose enable DEBUG")
 
 args = parser.parse_args()
@@ -32,18 +32,19 @@ def main():
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
     
-    data_dir = f"{args.indir}/data/"
-    model_dir = f"{args.outdir}/models/"
-    samples_dir = f"{args.outdir}/samples/"
+    static_data_dir = f"{args.indir}/data/"
+    seeded_data_dir = f"{args.indir}/data/seed{args.gen_seed}/"
+    model_dir = f"{args.indir}/models/seed{args.gen_seed}/"
+    samples_dir = f"{args.indir}/samples/seed{args.gen_seed}/"
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(samples_dir, exist_ok=True)
         
     # load input files
-    data_events = np.load(f"{data_dir}/data_{args.signal}.npz")
+    data_events = np.load(f"{seeded_data_dir}/data_{args.signal}.npz")
     data_events_cr = data_events["data_events_cr"]
     data_events_sr = data_events["data_events_sr"]
     
-    mc_events = np.load(f"{args.input}/mc_events.npz")
+    mc_events = np.load(f"{static_data_dir}/mc_events.npz")
     mc_events_cr = mc_events["mc_events_cr"]
     mc_events_sr = mc_events["mc_events_sr"]
     
@@ -64,7 +65,6 @@ def main():
     mc_cr_label = np.zeros(mc_cr_train.shape[0]).reshape(-1,1)
     data_cr_label = np.ones(data_cr_train.shape[0]).reshape(-1,1)
     input_y_train_CR = np.concatenate([mc_cr_label, data_cr_label], axis=0)
-
     
     with open(args.config, 'r') as stream:
         params = yaml.safe_load(stream)
@@ -86,25 +86,24 @@ def main():
             load_model = False
 
     if not load_model:   
-        print("Training Reweight model...")
-        NN_reweight.train(input_x_train_CR, input_y_train_CR, save_model=True, batch_size=params["batch_size"], n_epochs=params["n_epochs"], model_name=f"reweight_best_s{args.signal}", outdir=model_dir)
+        print("Training weights for context...")
+        NN_reweight.train(input_x_train_CR, input_y_train_CR, save_model=True, batch_size=params["batch_size"], n_epochs=params["n_epochs"], model_name=f"context_weight_best_s{args.signal}", outdir=model_dir)
         print("Done training!")
 
     print("Making samples...")
     # evaluate weights in CR
     w_cr = NN_reweight.evaluation(mc_cr_test)
     w_cr = (w_cr/(1.-w_cr)).flatten()
-    np.savez(f"{samples_dir}/reweight_CR_closure_s{args.signal}.npz", target_cr=data_cr_test, mc_cr=mc_cr_test, w_cr=w_cr)
+    np.savez(f"{samples_dir}/context_weights_CR_closure_s{args.signal}.npz", target_cr=data_cr_test, mc_cr=mc_cr_test, w_cr=w_cr)
 
     # evaluate weights in SR
-    w_sr = NN_reweight.evaluation(mc_events_sr)
+    w_sr = NN_reweight.evaluation(mc_events_sr[:,:n_context])
     w_sr = (w_sr/(1.-w_sr)).flatten()
-    np.savez(f"{samples_dir}/reweight_SR_s{args.signal}.npz", mc_samples=mc_events_sr, w_sr=w_sr)
+    np.savez(f"{samples_dir}/context_weights_SR_s{args.signal}.npz", mc_samples=mc_events_sr, w_sr=w_sr)
     
     print("All done.")
   
 
-     
-    
+
 if __name__ == "__main__":
     main()
