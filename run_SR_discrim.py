@@ -50,7 +50,7 @@ def run_eval(set_1, set_2, test_B, test_S, code, save_dir, classifier_params, de
 
     for i in range(args.classifier_runs):
         
-        print(f"Classifier run {i} of {args.classifier_runs}.")
+        print(f"Classifier run {i+1} of {args.classifier_runs}.")
         local_id = f"{code}_run{i}"
                 
         # train classifier

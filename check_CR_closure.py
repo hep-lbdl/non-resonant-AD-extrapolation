@@ -132,7 +132,7 @@ def main():
             run_eval(set_1, set_2, w_1 = w_1, code=f"reweight_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         
         else:
-            reweight_events = np.load(f"{samples_dir}/reweight_SR_closure_s0.npz")
+            reweight_events = np.load(f"{samples_dir}/reweight_SR_s0.npz")
             set_1 = reweight_events["mc_samples"][:,n_context:]
             w_1 =  reweight_events["w_sr"]
             data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
