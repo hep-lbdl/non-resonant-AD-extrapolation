@@ -53,7 +53,7 @@ Visualize the ratios in `graphics_notebooks/check_closure_ratios.ipynb`. Note th
 
 Run `run_SR_discrim.py -i /path/to/working_dir -full_sup -ideal -reweight -generate -morph`
 
-Once everything is run, plot the results in `AD.scan.ipynb'.
+Once everything is run, plot the results in `AD.scan.ipynb`.
 
 _________
 
