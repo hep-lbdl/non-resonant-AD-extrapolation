@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
  
 # Adding optional argument
 parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
-parser.add_argument("-n", "--classifier_runs", help = "classifier_runs", default =1)
+parser.add_argument("-n", "--classifier_runs", help = "classifier_runs",default=10)
 parser.add_argument("-i","--indir",help="home folder",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
 parser.add_argument("-c","--config",help="BC config file",default="configs/bc_discrim.yml")
 parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
@@ -103,36 +103,73 @@ def main():
     n_context = 2
         
     if args.ideal:
+        #CR
         ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
-        data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
         set_1 = ideal_bkg_events["ideal_bkg_events_cr"][:,n_context:]
+        data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
         set_2 = data_events["data_events_cr"][:set_1.shape[0],n_context:]
+        
+        #SR
+        #ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
+        #set_1 = ideal_bkg_events["ideal_bkg_events_sr"][:,n_context:]
+        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+        
         run_eval(set_1, set_2, code=f"ideal_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         print()
         
     if args.reweight:
+        #CR
         reweight_events = np.load(f"{samples_dir}/reweight_CR_closure_s0.npz")
         set_1 = reweight_events["mc_cr"][:,n_context:]
         w_1 =  reweight_events["w_cr"]
         set_2 = reweight_events["target_cr"][:,n_context:]
+        
+        #SR
+        #reweight_events = np.load(f"{samples_dir}/reweight_SR_closure_s0.npz")
+        #set_1 = reweight_events["mc_samples"][:,n_context:]
+        # w_1 =  reweight_events["w_sr"]
+        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+        
         run_eval(set_1, set_2, w_1 = w_1, code=f"reweight_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         print()
         
     if args.generate:
+        #CR
         # No weights here -- cr is sampled using data
         generate_events = np.load(f"{samples_dir}/generate_CR_closure_s0.npz")
         context_weights = np.load(f"{samples_dir}/context_weights_CR_closure_s0.npz")
         set_1 = generate_events["generate_cr"]
         set_2 = generate_events["target_cr"]
+        
+        #SR
+        #generate_events = np.load(f"{samples_dir}/generate_SR_s0.npz")
+        #context_weights = np.load(f"{samples_dir}/context_weights_SR_s0.npz")
+        #set_1 = generate_events["samples"]
+        #w_1 =  context_weights["w_sr"]
+        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+        
         run_eval(set_1, set_2, code=f"generate_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         print()
         
     if args.morph:
+        #CR
         morph_events = np.load(f"{samples_dir}/morph_CR_closure_s0.npz")
         context_weights = np.load(f"{samples_dir}/context_weights_CR_closure_s0.npz")
         set_1 = morph_events["morph_cr"]
         w_1 =  context_weights["w_cr"]
         set_2 = morph_events["target_cr"]
+        
+        #SR
+        #morph_events = np.load(f"{samples_dir}/morph_SR_s0.npz")
+        #context_weights = np.load(f"{samples_dir}/context_weights_SR_s0.npz")
+        #set_1 = morph_events["samples"]
+        #w_1 =  context_weights["w_sr"]
+        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+        
         run_eval(set_1, set_2, w_1 = w_1, code=f"morph_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         print()
         

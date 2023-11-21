@@ -47,7 +47,7 @@ def main():
     mc_events_cr = mc_events["mc_events_cr"]
     mc_events_sr = mc_events["mc_events_sr"]
     
-    print("Working with s/b =", args.signal, ". CR has", len(data_events_cr), "data events," len(mc_events_cr), "MC events.")
+    print("Working with s/b =", args.signal, ". CR has", len(data_events_cr), "data events,", len(mc_events_cr), "MC events.")
 
     # Train flow in the CR
     # To do the closure tests, we need to withhold a small amount of CR data
