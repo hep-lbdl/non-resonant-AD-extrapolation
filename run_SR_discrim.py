@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
  
 # Adding optional argument
 parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
-parser.add_argument("-n", "--classifier_runs", help = "classifier_runs", default = 1)
+parser.add_argument("-n", "--classifier_runs", help = "classifier_runs", default=10)
 parser.add_argument("-i","--indir",help="home folder",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
 parser.add_argument("-s","--signal",default=None,help="signal fraction",)
 parser.add_argument("-c","--config",help="BC config file",default="configs/bc_discrim.yml")
