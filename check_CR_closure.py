@@ -22,6 +22,7 @@ parser.add_argument("-ideal",action='store_true',help="Run idealized classifier"
 parser.add_argument("-reweight",action='store_true',help="Run Reweight method")
 parser.add_argument("-generate",action='store_true',help="Run Generate method")
 parser.add_argument("-morph",action='store_true',help="Run Morph method")
+parser.add_argument("-sr",action='store_true',help="Check SR closure instead of CR")
 
 
 
@@ -64,7 +65,7 @@ def run_eval(set_1, set_2, code, save_dir, classifier_params, device, w_1 = "", 
 
     for i in range(args.classifier_runs):
         
-        print(f"Classifier run {i} of {args.classifier_runs}.")
+        print(f"Classifier run {i+1} of {args.classifier_runs}.")
         local_id = f"{code}_run{i}"
                 
         # train classifier
@@ -78,7 +79,7 @@ def run_eval(set_1, set_2, code, save_dir, classifier_params, device, w_1 = "", 
         print(f"   AUC: {auc}")
         
     print("Median auc, 16th percentile, 84th percentile")
-    print(np.median(aucs_list), np.percentile(aucs_list, 16), np.percentile(aucs_list, 84))
+    print(np.median(aucs_list), [np.percentile(aucs_list, 16), np.percentile(aucs_list, 84)])
         
     print("Done.")
   
@@ -104,74 +105,82 @@ def main():
     n_samples = 30000 #ideal bkg and data tend to be rather large
         
     if args.ideal:
-        #CR
-        ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
-        set_1 = ideal_bkg_events["ideal_bkg_events_cr"][:n_samples,n_context:]
-        data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
-        set_2 = data_events["data_events_cr"][:n_samples,n_context:]
         
-        #SR
-        #ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
-        #set_1 = ideal_bkg_events["ideal_bkg_events_sr"][:,n_context:]
-        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
-        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
-        
-        run_eval(set_1, set_2, code=f"ideal_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
+        if not args.sr:
+            ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
+            set_1 = ideal_bkg_events["ideal_bkg_events_cr"][:n_samples,n_context:]
+            data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+            set_2 = data_events["data_events_cr"][:n_samples,n_context:]
+            run_eval(set_1, set_2, code=f"ideal_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
+        else:
+            ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
+            set_1 = ideal_bkg_events["ideal_bkg_events_sr"][:,n_context:]
+            data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+            set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+            run_eval(set_1, set_2, code=f"ideal_s0_sr", save_dir=eval_dir, classifier_params=params, device=device)
+            
+       
         print()
         
     if args.reweight:
-        #CR
-        reweight_events = np.load(f"{samples_dir}/reweight_CR_closure_s0.npz")
-        set_1 = reweight_events["mc_cr"][:,n_context:]
-        w_1 =  reweight_events["w_cr"]
-        set_2 = reweight_events["target_cr"][:,n_context:]
         
-        #SR
-        #reweight_events = np.load(f"{samples_dir}/reweight_SR_closure_s0.npz")
-        #set_1 = reweight_events["mc_samples"][:,n_context:]
-        # w_1 =  reweight_events["w_sr"]
-        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
-        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+        if not args.sr:
+            reweight_events = np.load(f"{samples_dir}/reweight_CR_closure_s0.npz")
+            set_1 = reweight_events["mc_cr"][:,n_context:]
+            w_1 =  reweight_events["w_cr"]
+            set_2 = reweight_events["target_cr"][:,n_context:]
+            run_eval(set_1, set_2, w_1 = w_1, code=f"reweight_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         
-        run_eval(set_1, set_2, w_1 = w_1, code=f"reweight_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
+        else:
+            reweight_events = np.load(f"{samples_dir}/reweight_SR_closure_s0.npz")
+            set_1 = reweight_events["mc_samples"][:,n_context:]
+            w_1 =  reweight_events["w_sr"]
+            data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+            set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+            run_eval(set_1, set_2, w_1 = w_1, code=f"reweight_s0_sr", save_dir=eval_dir, classifier_params=params, device=device)
+            
         print()
         
     if args.generate:
-        #CR
-        # No weights here -- cr is sampled using data
-        generate_events = np.load(f"{samples_dir}/generate_CR_closure_s0.npz")
-        context_weights = np.load(f"{samples_dir}/context_weights_CR_closure_s0.npz")
-        set_1 = generate_events["generate_cr"]
-        set_2 = generate_events["target_cr"]
         
-        #SR
-        #generate_events = np.load(f"{samples_dir}/generate_SR_s0.npz")
-        #context_weights = np.load(f"{samples_dir}/context_weights_SR_s0.npz")
-        #set_1 = generate_events["samples"]
-        #w_1 =  context_weights["w_sr"]
-        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
-        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+        if not args.sr:
+            # No weights here -- cr is sampled using data
+            generate_events = np.load(f"{samples_dir}/generate_CR_closure_s0.npz")
+            context_weights = np.load(f"{samples_dir}/context_weights_CR_closure_s0.npz")
+            set_1 = generate_events["generate_cr"]
+            set_2 = generate_events["target_cr"]
+            run_eval(set_1, set_2, code=f"generate_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         
-        run_eval(set_1, set_2, code=f"generate_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
+        else:
+            generate_events = np.load(f"{samples_dir}/generate_SR_s0.npz")
+            context_weights = np.load(f"{samples_dir}/context_weights_SR_s0.npz")
+            set_1 = generate_events["samples"]
+            w_1 =  context_weights["w_sr"]
+            data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+            set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+            run_eval(set_1, set_2, code=f"generate_s0_sr", save_dir=eval_dir, classifier_params=params, device=device)
+        
         print()
         
     if args.morph:
-        #CR
-        morph_events = np.load(f"{samples_dir}/morph_CR_closure_s0.npz")
-        context_weights = np.load(f"{samples_dir}/context_weights_CR_closure_s0.npz")
-        set_1 = morph_events["morph_cr"]
-        w_1 =  context_weights["w_cr"]
-        set_2 = morph_events["target_cr"]
         
-        #SR
-        #morph_events = np.load(f"{samples_dir}/morph_SR_s0.npz")
-        #context_weights = np.load(f"{samples_dir}/context_weights_SR_s0.npz")
-        #set_1 = morph_events["samples"]
-        #w_1 =  context_weights["w_sr"]
-        #data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
-        #set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+        if not args.sr:
+            morph_events = np.load(f"{samples_dir}/morph_CR_closure_s0.npz")
+            context_weights = np.load(f"{samples_dir}/context_weights_CR_closure_s0.npz")
+            set_1 = morph_events["morph_cr"]
+            w_1 =  context_weights["w_cr"]
+            set_2 = morph_events["target_cr"]
+            run_eval(set_1, set_2, w_1 = w_1, code=f"morph_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
         
-        run_eval(set_1, set_2, w_1 = w_1, code=f"morph_s0_cr", save_dir=eval_dir, classifier_params=params, device=device)
+        else:
+            morph_events = np.load(f"{samples_dir}/morph_SR_s0.npz")
+            context_weights = np.load(f"{samples_dir}/context_weights_SR_s0.npz")
+            set_1 = morph_events["samples"]
+            w_1 =  context_weights["w_sr"]
+            data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
+            set_2 = data_events["data_events_sr"][:set_1.shape[0],n_context:]
+            run_eval(set_1, set_2, w_1 = w_1, code=f"morph_s0_sr", save_dir=eval_dir, classifier_params=params, device=device)
+        
         print()
         
     print("All done!")
