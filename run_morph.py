@@ -82,7 +82,7 @@ def main():
         # Check if a model exist
         if os.path.isfile(args.model_path_base):
             # Load the trained model
-            print("Loading in base model...")
+            print(f"Loading in base model from {args.model_path_base}...")
             base_density_flow = torch.load(args.model_path_base)
             base_density_flow.to(device)
         else:
@@ -104,7 +104,7 @@ def main():
         # Check if a model exist
         if os.path.isfile(args.model_path_top):
             # Load the trained model
-            print("Loading in top model...")
+            print(f"Loading in top model from {args.model_path_top}...")
             transport_flow = torch.load(args.model_path_top)
             transport_flow.to(device)
         else:

@@ -74,7 +74,7 @@ def main():
         # Check if a model exist
         if os.path.isfile(args.model_path):
             # Load the trained model
-            print("Loading in model...")
+            print(f"Loading in model from {args.model_path}...")
             MAF = torch.load(args.model_path)
             MAF.to(device)
         else:
