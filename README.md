@@ -1,5 +1,41 @@
 # Background extrapolation for non-resonant anomaly detection.
 
+
+Creates the following directory structure (you only need to make `working_dir`, which doesn't need to be in the same place as this repo). Make sure it has a lot of space!
+```
+working_dir
+│   data
+│   models
+│   samples
+|   evaluation
+```
+
+## Make datasets
+
+Make the test set with `python gen_phys_testset.py -o /path/to/working_dir/`
+
+Make the physics datasets with `python gen_siginj_phys_dataset.py -o /path/to/working_dir/ -make_static`. The `-make_static` flag prepares the MC and ideal bkg datasets.
+
+  If you want to generate another set of signal injections, run `python gen_siginj_phys_dataset.py -o /path/to/working_dir/ -g 2` where `g` is the random seed. The list of signal injections can be seen in `gen_siginj_phys_dataset.py`
+
+All data goes into `working_dir/data/`. You can also see plots for signal vs. background.
+
+## Train models
+
+Adjust the model architectures and hyperparameters in this repo's `configs` folder.
+
+### Reweight
+
+Run `python run_reweight.py -i /path/to/working_dir`. You can check the loss plot in `working_dir/models/seed1/` (or whatever data generation seed you chose).
+
+_________
+
+
+
+
+
+
+
 We explore 3 methods:
 - CATHODE + SALAD
 - FETA + SALAD
