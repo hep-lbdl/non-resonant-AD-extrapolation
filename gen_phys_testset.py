@@ -5,6 +5,7 @@ from helpers.plotting import *
 from helpers.process_data import *
 from semivisible_jet.utils import *
 import os
+import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument( "-s", "--sigsample",help="Input signal .txt file",
@@ -27,6 +28,11 @@ def main():
     # define sample size as the number of files
     sample_size = args.size
     print(f"Loading {sample_size} samples...")
+    
+    # load in the preprocessor 
+    with open(f"{data_dir}/mc_scaler.pkl","rb") as f:
+        print("Loading in trained minmax scaler.")
+        scaler = pickle.load(f)
     
     # load signal first
     var_names = ["ht", "met", "m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]
@@ -80,8 +86,8 @@ def main():
     plot_all_variables(sig_list, bkg_list, var_names, **plot_kwargs)
 
     # Save dataset
-    np.savez(f"{data_dir}/test_SR.npz", bkg_events_SR=bkg_test_SR, sig_events_SR=sig_test_SR)
-    np.savez(f"{data_dir}/fullsup_SR.npz", bkg_events_SR=bkg_fullsup_SR, sig_events_SR=sig_fullsup_SR)
+    np.savez(f"{data_dir}/test_SR.npz", bkg_events_SR=scaler.transform(bkg_test_SR), sig_events_SR=scaler.transform(sig_test_SR))
+    np.savez(f"{data_dir}/fullsup_SR.npz", bkg_events_SR=scaler.transform(bkg_fullsup_SR), sig_events_SR=scaler.transform(sig_fullsup_SR))
     
         
     print(f"Finished generating datasets.")

@@ -4,7 +4,8 @@ from math import sin, cos, pi
 from helpers.plotting import *
 from helpers.process_data import *
 from semivisible_jet.utils import *
-
+from sklearn import preprocessing
+import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--sigsample",help="Input signal .txt file",
@@ -79,7 +80,14 @@ def main():
         # concatenate all background events
         ideal_bkg_events = np.concatenate(ideal_bkg_events_list)
         mc_events = np.concatenate(mc_events_list)
-
+        
+        # preprocess data -- fit to MC
+        scaler = preprocessing.MinMaxScaler(feature_range=(-2.5, 2.5)).fit(mc_events)
+        
+        with open(f"{data_dir}/mc_scaler.pkl","wb") as f:
+            print("Saving out trained minmax scaler.")
+            pickle.dump(scaler, f)
+            
         # SR masks
         mc_mask_SR = phys_SR_mask(mc_events)
         mc_mask_CR = ~mc_mask_SR
@@ -88,8 +96,13 @@ def main():
         ideal_bkg_mask_CR = ~ideal_bkg_mask_SR
         
         # save out the events that don't change with signal injection
-        np.savez(f"{data_dir}/mc_events.npz", mc_events_cr=mc_events[mc_mask_CR], mc_events_sr=mc_events[mc_mask_SR])
-        np.savez(f"{data_dir}/ideal_bkg_events.npz", ideal_bkg_events_cr=ideal_bkg_events[ideal_bkg_mask_CR], ideal_bkg_events_sr=ideal_bkg_events[ideal_bkg_mask_SR])
+        np.savez(f"{data_dir}/mc_events.npz", mc_events_cr=scaler.transform(mc_events[mc_mask_CR]), mc_events_sr=scaler.transform(mc_events[mc_mask_SR]))
+        np.savez(f"{data_dir}/ideal_bkg_events.npz", ideal_bkg_events_cr=scaler.transform(ideal_bkg_events[ideal_bkg_mask_CR]), ideal_bkg_events_sr=scaler.transform(ideal_bkg_events[ideal_bkg_mask_SR]))
+        
+    else: 
+        with open(f"{data_dir}/mc_scaler.pkl","rb") as f:
+            print("Loading in trained minmax scaler.")
+            scaler = pickle.load(f)
     
     print(f"Loading {sample_size} samples of bkg (and some signal)...")
 
@@ -163,7 +176,7 @@ def main():
         plot_all_variables(data_list, bkg_list, var_names, **plot_kwargs)
         
         # Save dataset
-        np.savez(f"{seeded_data_dir}/data_{s}.npz", data_events_cr=data_events[data_mask_CR], data_events_sr=data_events[data_mask_SR], sig_percent=s_SR)
+        np.savez(f"{seeded_data_dir}/data_{s}.npz", data_events_cr=scaler.transform(data_events[data_mask_CR]), data_events_sr=scaler.transform(data_events[data_mask_SR]), sig_percent=s_SR)
     
     print("Finished generating dataset.")
 
