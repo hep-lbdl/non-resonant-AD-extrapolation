@@ -5,7 +5,7 @@ import torch
 import os
 import sys
 import logging
-from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import roc_auc_score
 import argparse
 
 
@@ -17,7 +17,7 @@ parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
 parser.add_argument("-n", "--classifier_runs", help = "classifier_runs", default = 1)
 parser.add_argument("-i","--indir",help="home folder",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
 parser.add_argument("-s","--signal",default=None,help="signal fraction",)
-parser.add_argument("-c","--config",help="Reweight NN config file",default="configs/bc_discrim.yml")
+parser.add_argument("-c","--config",help="BC config file",default="configs/bc_discrim.yml")
 parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
 parser.add_argument("-full_sup",action='store_true',help="Run fully supervised case")
 parser.add_argument("-ideal",action='store_true',help="Run idealized classifier")
@@ -59,6 +59,7 @@ def run_eval(set_1, set_2, test_B, test_S, code, save_dir, classifier_params, de
 
         scores = NN.evaluation(input_x_test)
         auc = roc_auc_score(input_y_test, scores)
+        if auc < 0.5: auc = 1.0 - auc
         print(f"   AUC: {auc}")
                 
     print()

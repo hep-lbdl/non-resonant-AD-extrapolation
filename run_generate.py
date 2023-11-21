@@ -41,12 +41,11 @@ def main():
     # load input files
     data_events = np.load(f"{seeded_data_dir}/data_{args.signal}.npz")
     data_events_cr = data_events["data_events_cr"]
-    data_events_sr = data_events["data_events_sr"]
     
     mc_events = np.load(f"{static_data_dir}/mc_events.npz")
     mc_events_sr = mc_events["mc_events_sr"]
     
-    print("Working with s/b =", args.signal, ". CR has", len(data_events_cr), "events, SR has", len(data_events_sr), "events.")
+    print("Working with s/b =", args.signal, ". CR has", len(data_events_cr), "events.")
 
     # Train flow in the CR
     # To do the closure tests, we need to withhold a small amount of CR data
