@@ -51,9 +51,9 @@ Visualize the ratios in `graphics_notebooks/check_closure_ratios.ipynb`. Note th
 
 ## SR discrimination task
 
-Run `run_SR_discrim.py -i /path/to/working_dir -full_sup -ideal -reweight -generate -morph`
+Run `run_SR_discrim.py -i /path/to/working_dir -full_sup -ideal -reweight -generate -morph`. Note that this script doesn't generate any results, it just trains the CWoLa models. 
 
-Once everything is run, plot the results in `AD.scan.ipynb`.
+Once everything is run, plot the results in `AD.scan.ipynb`. This notebook with read in the CWoLa models to generate the results (it's easier to do the ensembling and score averaging when there's access to the models, rather than just the scores). 
 
 _________
 
