@@ -101,13 +101,14 @@ def main():
         params = yaml.safe_load(stream)
         
     n_context = 2
+    n_samples = 30000 #ideal bkg and data tend to be rather large
         
     if args.ideal:
         #CR
         ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
-        set_1 = ideal_bkg_events["ideal_bkg_events_cr"][:,n_context:]
+        set_1 = ideal_bkg_events["ideal_bkg_events_cr"][:n_samples,n_context:]
         data_events = np.load(f"{seeded_data_dir}/data_0.npz")    
-        set_2 = data_events["data_events_cr"][:set_1.shape[0],n_context:]
+        set_2 = data_events["data_events_cr"][:n_samples,n_context:]
         
         #SR
         #ideal_bkg_events = np.load(f"{static_data_dir}/ideal_bkg_events.npz")
