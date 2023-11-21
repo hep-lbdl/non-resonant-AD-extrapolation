@@ -47,11 +47,13 @@ Run `python run_context_erights.py -i /path/to/working_dir -s 0`
 
 Run `python check_CR_closure.py -i /path/to/working_dir -ideal -reweight -generate -morph`
 
-Visualize the ratios in `graphics_notebooks/check_closure_ratios.ipynb`
+Visualize the ratios in `graphics_notebooks/check_closure_ratios.ipynb`. Note that you can't check closure on the Generate and Morph methods without first making the context weights.
 
 ## SR discrimination task
 
 Run `run_SR_discrim.py -i /path/to/working_dir -full_sup -ideal -reweight -generate -morph`
+
+Once everything is run, plot the results in `AD.scan.ipynb'.
 
 _________
 
