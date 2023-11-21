@@ -12,21 +12,46 @@ working_dir
 
 ## Make datasets
 
-Make the test set with `python gen_phys_testset.py -o /path/to/working_dir/`
-
-Make the physics datasets with `python gen_siginj_phys_dataset.py -o /path/to/working_dir/ -make_static`. The `-make_static` flag prepares the MC and ideal bkg datasets.
+First ake the physics datasets with `python gen_siginj_phys_dataset.py -o /path/to/working_dir/ -make_static`. The `-make_static` flag prepares the MC and ideal bkg datasets. This must be done first because it also generate the preprocessor for all the data based on the mc.
 
   If you want to generate another set of signal injections, run `python gen_siginj_phys_dataset.py -o /path/to/working_dir/ -g 2` where `g` is the random seed. The list of signal injections can be seen in `gen_siginj_phys_dataset.py`
+
+
+Then make the test set with `python gen_phys_testset.py -o /path/to/working_dir/`
+
 
 All data goes into `working_dir/data/`. You can also see plots for signal vs. background.
 
 ## Train models
 
-Adjust the model architectures and hyperparameters in this repo's `configs` folder.
+Adjust the model architectures and hyperparameters in this repo's `configs` folder. You can check the loss plot in `working_dir/models/seed1/` (or whatever data generation seed you chose). If you want to run with a nonzero signal fraction, change the argument to `-s` to the s/b fraction.
+
 
 ### Reweight
 
-Run `python run_reweight.py -i /path/to/working_dir`. You can check the loss plot in `working_dir/models/seed1/` (or whatever data generation seed you chose).
+Run `python run_reweight.py -i /path/to/working_dir -s 0` 
+
+### Generate
+
+Run `python run_generate.py -i /path/to/working_dir -s 0` 
+
+### Morph
+
+Run `python run_morph.py -i /path/to/working_dir -s 0` 
+
+### Context weights
+
+Run `python run_context_erights.py -i /path/to/working_dir -s 0` 
+
+## Check closure
+
+Run `python check_CR_closure.py -i /path/to/working_dir -ideal -reweight -generate -morph`
+
+Visualize the ratios in `graphics_notebooks/check_closure_ratios.ipynb`
+
+## SR discrimination task
+
+Run `run_SR_discrim.py -i /path/to/working_dir -full_sup -ideal -reweight -generate -morph`
 
 _________
 
