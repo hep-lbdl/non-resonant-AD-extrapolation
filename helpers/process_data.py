@@ -80,3 +80,30 @@ def check_file_log(bkg_path, ideal_bkg_path, mc_path):
         if not os.path.isfile(file_path):
             print(f"{file_path} does not exist!")
 
+def morph_mc(mc_events):
+    """
+    This function has been hand-tuned to samples in the official Zenodo dataset. Be aware!!
+    """
+    morphed_mc_events = np.copy(mc_events)
+
+    def morph_ht(x):
+        return x+10
+
+    def morph_met(x):
+        return ((x+2)*(1+(x/500.)))
+
+    def morph_mjj(x):
+        return x*(1+(x/6000.))
+
+    def morph_taus(x):
+        return x*(x**(0.1))
+
+    morphed_mc_events[:,0] = morph_ht(morphed_mc_events[:,0])
+    morphed_mc_events[:,1] = morph_met(morphed_mc_events[:,1])
+    morphed_mc_events[:,2] = morph_mjj(morphed_mc_events[:,2])
+    morphed_mc_events[:,3] = morph_taus(morphed_mc_events[:,3])
+    morphed_mc_events[:,4] = morph_taus(morphed_mc_events[:,4])
+    morphed_mc_events[:,5] = morph_taus(morphed_mc_events[:,5])
+    morphed_mc_events[:,6] = morph_taus(morphed_mc_events[:,6])
+
+    return morphed_mc_events
