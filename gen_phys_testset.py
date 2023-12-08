@@ -14,7 +14,7 @@ parser.add_argument( "-s", "--sigsample",help="Input signal .txt file",
 parser.add_argument("-b","--bkg-dir",help="Input bkground folder",
     default="/global/cfs/cdirs/m3246/kbai/HV_samples/qcd_test_samples/" 
 )
-parser.add_argument( "-size", type=int,help="Number of bkg text files",default=20)
+parser.add_argument( "-size", type=int,help="Number of bkg text files",default=30)
 parser.add_argument("-o","--outdir",help="output directory")
 
 args = parser.parse_args()
@@ -66,7 +66,7 @@ def main():
     
     # Select test set
     n_test_sig = 50000
-    n_test_bkg = 100000
+    n_test_bkg = 200000
     sig_test_SR = sig_events_SR[:n_test_sig]
     bkg_test_SR = bkg_events_SR[:n_test_bkg]
     

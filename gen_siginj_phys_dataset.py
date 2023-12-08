@@ -24,6 +24,7 @@ parser.add_argument("-size",type=int,help="Number of bkg text files",default=20)
 parser.add_argument("-o","--outdir",help="output directory",)
 parser.add_argument("-make_static",action='store_true',help="Whether to make the static samples")
 parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
+parser.add_argument("-morph_mc",action='store_true',help="Whether to tamper with the MC to make it look more different from the data")
 
 
 args = parser.parse_args()
@@ -81,6 +82,10 @@ def main():
         ideal_bkg_events = np.concatenate(ideal_bkg_events_list)
         mc_events = np.concatenate(mc_events_list)
         
+        if args.morph_mc:
+            print("Morphing the mc events a bit...")
+            mc_events = morph_mc(mc_events)
+        
         # preprocess data -- fit to MC
         scaler = preprocessing.MinMaxScaler(feature_range=(-2.5, 2.5)).fit(mc_events)
         
@@ -131,10 +136,10 @@ def main():
     # Create folder for the particular signal injection
     seeded_data_dir = f"{data_dir}/seed{args.gen_seed}/"
     os.makedirs(seeded_data_dir, exist_ok=True)
-    np.random.seed(args.gen_seed)
+    np.random.seed(int(args.gen_seed))
  
     # initialize lists
-    sig_percent_list = [0, 0.0025, 0.005, 0.0075, 0.012, 0.016, 0.02]
+    sig_percent_list = [0.0026, 0.0053, 0.0080, 0.0106, 0.0133, 0.0160]
 
     # Create signal injection dataset
     n_bkg_SR = bkg_events[bkg_mask_SR].shape[0]
