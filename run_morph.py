@@ -18,8 +18,11 @@ parser.add_argument('-lt', "--load_model_top",default=False,help='Load best trai
 parser.add_argument('-tm', "--model_path_top",help='Path to best trained top model')
 parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
 parser.add_argument("-v","--verbose",default=False,help="Verbose enable DEBUG",)
+#parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
 
 args = parser.parse_args()
+#os.environ["CUDA_VISIBLE_DEVICES"]= str(args.cuda_slot)
+
 logging.basicConfig(level=logging.INFO)
 log_level = logging.DEBUG if args.verbose else logging.INFO
 log = logging.getLogger("run")

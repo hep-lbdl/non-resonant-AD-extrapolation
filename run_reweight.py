@@ -16,8 +16,10 @@ parser.add_argument('-l', "--load_model",action='store_true',help='Load best tra
 parser.add_argument('-m',  "--model_path",help='Path to best trained model')
 parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
 parser.add_argument( "-v", "--verbose",default=False,help="Verbose enable DEBUG")
+#parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
 
 args = parser.parse_args()
+#os.environ["CUDA_VISIBLE_DEVICES"]= str(args.cuda_slot)
 
 logging.basicConfig(level=logging.INFO)
 log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -93,12 +95,12 @@ def main():
     # evaluate weights in CR
     w_cr = NN_reweight.evaluation(mc_cr_test)
     w_cr = (w_cr/(1.-w_cr)).flatten()
-    np.savez(f"{samples_dir}/reweight_CR_closure_s{args.signal}.npz", target_cr=data_cr_test, mc_cr=mc_cr_test, w_cr=w_cr)
+    np.savez(f"{samples_dir}/reweight_CR_closure_s{args.signal}.npz", target_cr=data_cr_test, mc_cr=mc_cr_test, w_cr=np.nan_to_num(w_cr, copy=False, nan=0.0, posinf=0.0, neginf=0.0))
 
     # evaluate weights in SR
     w_sr = NN_reweight.evaluation(mc_events_sr)
     w_sr = (w_sr/(1.-w_sr)).flatten()
-    np.savez(f"{samples_dir}/reweight_SR_s{args.signal}.npz", mc_samples=mc_events_sr, w_sr=w_sr)
+    np.savez(f"{samples_dir}/reweight_SR_s{args.signal}.npz", mc_samples=mc_events_sr, w_sr=np.nan_to_num(w_sr, copy=False, nan=0.0, posinf=0.0, neginf=0.0))
     
     print("All done.")
   
