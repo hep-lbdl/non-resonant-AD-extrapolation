@@ -61,14 +61,13 @@ class Classifier():
                  layers=[64,64,64], 
                  learning_rate=1e-3, 
                  loss_type="binary_crossentropy", 
-                 device="cpu",):
+                 device="cpu",
+                 scale_data=False):
 
         self.n_inputs = n_inputs
         self.device = device
         self.model = Model(layers, n_inputs=n_inputs).to(self.device)
-        
-        # Scaler transform for preprocessing
-        self.scaler = StandardScaler()
+        self.scale_data = scale_data
 
         if loss_type == 'binary_crossentropy':
             self.loss_func = F.binary_cross_entropy
@@ -102,8 +101,11 @@ class Classifier():
             x_train, x_val, y_train, y_val = train_test_split(input_x, input_y, test_size=0.33, random_state=42)
         
         # Data preprocessing
-        x_train = self.scaler.fit_transform(x_train)
-        x_val = self.scaler.transform(x_val)
+        if self.scale_data:
+            # Scaler transform for preprocessing
+            self.scaler = StandardScaler().fit(x_train)
+            x_train = self.scaler.transform(x_train)
+            x_val = self.scaler.transform(x_val)
         
         x_train = self.np_to_torch(x_train)
         y_train = self.np_to_torch(y_train)
@@ -234,7 +236,8 @@ class Classifier():
         self.model.eval()
         
         with torch.no_grad():
-            X_test = self.scaler.transform(X_test)
+            if self.scale_data:
+                X_test = self.scaler.transform(X_test)
             x_test = self.np_to_torch(X_test).to(self.device)
             outputs = self.model(x_test).detach().cpu().numpy()
             

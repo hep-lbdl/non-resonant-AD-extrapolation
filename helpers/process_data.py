@@ -39,7 +39,7 @@ def toy_SR_mask(events):
 def phys_SR_mask(events):
 
     # define SR and CR masks
-    HT_cut = 600    # In SR, HT > 600 GeV
+    HT_cut = 800    # In SR, HT > 800 GeV
     MET_cut = 75    # In SR, MET > 75 GeV
 
     # SR masks
@@ -87,10 +87,10 @@ def morph_mc(mc_events):
     morphed_mc_events = np.copy(mc_events)
 
     def morph_ht(x):
-        return x+10
+        return x
 
     def morph_met(x):
-        return ((x+2)*(1+(x/500.)))
+        return (x*(1+(x/500.)))
 
     def morph_mjj(x):
         return x*(1+(x/6000.))

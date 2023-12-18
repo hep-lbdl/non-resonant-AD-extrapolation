@@ -60,7 +60,7 @@ class SimpleMAF:
                                                                   hidden_features=num_hidden_features, 
                                                                   context_features=num_context, 
                                                                   activation = activation, 
-                                                                  dropout_probability = 0.1))
+                                                                 ))
             """
             
             transforms.append(MaskedPiecewiseRationalQuadraticAutoregressiveTransform(features=num_features, 
