@@ -12,16 +12,16 @@ parser.add_argument("-i","--indir",help="working folder",
 )
 parser.add_argument("-s","--signal",default=None,help="signal fraction",)
 parser.add_argument("-c","--config",help="Morph flows config file",default="configs/morph_physics.yml")
-parser.add_argument('-lb', "--load_model_base",default=False,help='Load best trained base model.')
+parser.add_argument('-lb',action="store_true",help='Load best trained base model.')
 parser.add_argument('-bm', "--model_path_base",help='Path to best trained base model')
-parser.add_argument('-lt', "--load_model_top",default=False,help='Load best trained top model.')
+parser.add_argument('-lt',action="store_true",help='Load best trained top model.')
 parser.add_argument('-tm', "--model_path_top",help='Path to best trained top model')
 parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
 parser.add_argument("-v","--verbose",default=False,help="Verbose enable DEBUG",)
-#parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
+parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
 
 args = parser.parse_args()
-#os.environ["CUDA_VISIBLE_DEVICES"]= str(args.cuda_slot)
+os.environ["CUDA_VISIBLE_DEVICES"]= str(args.cuda_slot)
 
 logging.basicConfig(level=logging.INFO)
 log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -79,7 +79,7 @@ def main():
     base_density_flow = SimpleMAF(num_features=n_features, num_context=n_context, device=device, num_layers=params["base"]["n_layers"], num_hidden_features=params["base"]["n_hidden_features"], learning_rate=params["base"]["learning_rate"])
     
     # Base model in
-    load_model_base = args.load_model_base
+    load_model_base = args.lb
     
     if load_model_base:
         # Check if a model exist
@@ -101,7 +101,7 @@ def main():
     transport_flow = SimpleMAF(num_features = n_features, num_context=n_context, base_dist=base_density_flow.flow, num_layers=params["top"]["n_layers"], num_hidden_features=params["top"]["n_hidden_features"], learning_rate=params["top"]["learning_rate"], device=device)
         
     # Top model in
-    load_model_top = args.load_model_top
+    load_model_top = args.lt
     
     if load_model_top:
         # Check if a model exist

@@ -9,7 +9,9 @@ import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--sigsample",help="Input signal .txt file",
-    default="/global/cfs/cdirs/m3246/kbai/HV_samples/sig_samples/rinv13_pTmin200GeV.txt"
+    #default="/global/cfs/cdirs/m3246/kbai/HV_samples/sig_samples/rinv13_pTmin200GeV.txt"
+    #default="/global/cfs/cdirs/m3246/kbai/HV_samples/sig_samples/rinv13_2TeV.txt"
+    default="/global/cfs/cdirs/m3246/kbai/HV_samples/sig_samples/rinv13_3TeV.txt"
 )
 parser.add_argument("-b1","--bkg-dir",help="Input bkground folder",
     default="/global/cfs/cdirs/m3246/kbai/HV_samples/qcd_data_samples/"
@@ -139,7 +141,9 @@ def main():
     np.random.seed(int(args.gen_seed))
  
     # initialize lists
-    sig_percent_list = [0.0026, 0.0053, 0.0080, 0.0106, 0.0133, 0.0160]
+    #sig_percent_list = [0.004, 0.008, 0.012, 0.016, 0.02, 0.024] # 4TeV
+    #sig_percent_list = [0, 0.006, 0.012, 0.018, 0.024, 0.03, 0.036] # 2TeV
+    sig_percent_list = [0.004, 0.009, 0.013, 0.018, 0.022, 0.027] # 3TeV
 
     # Create signal injection dataset
     n_bkg_SR = bkg_events[bkg_mask_SR].shape[0]
@@ -168,6 +172,7 @@ def main():
         print(f"S/B={s_SR} in SR, S/sqrt(B) = {signif}, N bkg SR: {n_bkg_SR:.1e}, N sig SR: {n_sig_SR}")
         
         # Plot varibles in the SR
+        
         sig_list = selected_sig[selected_sig_mask_SR].T
         bkg_list = bkg_events[bkg_mask_SR].T
         data_list = data_events[data_mask_SR].T
@@ -182,8 +187,9 @@ def main():
         
         # Save dataset
         np.savez(f"{seeded_data_dir}/data_{s}.npz", data_events_cr=scaler.transform(data_events[data_mask_CR]), data_events_sr=scaler.transform(data_events[data_mask_SR]), sig_percent=s_SR)
+        
     
-    print("Finished generating dataset.")
+    print(f"Finished generating dataset. (Gen seed: {args.gen_seed})")
 
 if __name__ == "__main__":
     main()

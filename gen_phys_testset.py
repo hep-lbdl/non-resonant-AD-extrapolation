@@ -9,7 +9,9 @@ import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument( "-s", "--sigsample",help="Input signal .txt file",
-    default="/global/cfs/cdirs/m3246/kbai/HV_samples/analysis_input_testset/rinv13_pTmin200GeV.txt"
+   #default="/global/cfs/cdirs/m3246/kbai/HV_samples/analysis_input_testset/rinv13_pTmin200GeV.txt"
+   #default="/global/cfs/cdirs/m3246/kbai/HV_samples/analysis_input_testset/rinv13_2TeV.txt"
+   default="/global/cfs/cdirs/m3246/kbai/HV_samples/analysis_input_testset/rinv13_3TeV.txt"
 )
 parser.add_argument("-b","--bkg-dir",help="Input bkground folder",
     default="/global/cfs/cdirs/m3246/kbai/HV_samples/qcd_test_samples/" 
@@ -27,12 +29,12 @@ def main():
     
     # define sample size as the number of files
     sample_size = args.size
-    print(f"Loading {sample_size} samples...")
-    
     # load in the preprocessor 
     with open(f"{data_dir}/mc_scaler.pkl","rb") as f:
         print("Loading in trained minmax scaler.")
         scaler = pickle.load(f)
+        
+    print(f"Loading {sample_size} samples...")
     
     # load signal first
     var_names = ["ht", "met", "m_jj", "tau21_j1", "tau21_j2", "tau32_j1", "tau32_j2"]

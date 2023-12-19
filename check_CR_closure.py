@@ -14,8 +14,8 @@ parser = argparse.ArgumentParser()
  
 # Adding optional argument
 parser.add_argument("-cu", "--cuda_slot", help = "cuda_slot")
-parser.add_argument("-n", "--classifier_runs", help = "classifier_runs",default=10)
-parser.add_argument("-i","--indir",help="home folder",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/redo/")
+parser.add_argument("-n", "--classifier_runs", help = "classifier_runs",default=20)
+parser.add_argument("-i","--indir",help="home folder",default="/global/cfs/cdirs/m3246/rmastand/bkg_extrap/reg_mc/4TeV/")
 parser.add_argument("-c","--config",help="BC config file",default="configs/bc_discrim.yml")
 parser.add_argument("-g","--gen_seed",help="Random seed for signal injections",default=1)
 parser.add_argument("-ideal",action='store_true',help="Run idealized classifier")
@@ -63,13 +63,13 @@ def run_eval(set_1, set_2, code, save_dir, classifier_params, device, w_1 = "", 
     
     aucs_list = []
 
-    for i in range(args.classifier_runs):
+    for i in range(int(args.classifier_runs)):
         
         print(f"Classifier run {i+1} of {args.classifier_runs}.")
         local_id = f"{code}_run{i}"
                 
         # train classifier
-        NN = Classifier(n_inputs=5, layers=classifier_params["layers"], learning_rate=classifier_params["learning_rate"], device=device)
+        NN = Classifier(n_inputs=5, layers=classifier_params["layers"], learning_rate=classifier_params["learning_rate"], device=device, scale_data=False)
         NN.train(input_x_train, input_y_train, weights=input_w_train,  save_model=False, model_name = f"model_{local_id}" , n_epochs=classifier_params["n_epochs"], seed = i, outdir=save_dir, plot_loss=False)
 
         scores = NN.evaluation(input_x_test)

@@ -4,7 +4,6 @@ from helpers.Classifier import *
 import torch
 import os
 import sys
-import logging
 from sklearn.metrics import roc_auc_score
 import argparse
 
@@ -30,37 +29,50 @@ args = parser.parse_args()
 
 os.environ["CUDA_VISIBLE_DEVICES"]= str(args.cuda_slot)
 
-def run_eval(set_1, set_2, test_B, test_S, code, save_dir, classifier_params, device, w_1 = "", w_2 = ""):
+def regularize_weights(w_arr, sigma = 3.0):
+    w_copy = np.copy(w_arr)
+    mean_w = np.mean(w_copy)
+    std_w = np.std(w_copy)
+    w_copy[w_copy > (sigma*std_w + mean_w)] = 0
+    return w_copy
     
-    if w_1 == "":
+
+def run_eval(set_1, set_2, code, save_dir, classifier_params, device, w_1 = None, w_2 = None, run_test = False, test_B = None, test_S = None, crop_weights = True):
+    
+    if w_1 is None:
         w_1 = np.array([1.]*set_1.shape[0])
-    if w_2 == "":
+    if w_2 is None:
         w_2 = np.array([1.]*set_2.shape[0])
+    if crop_weights:
+        w_1 = regularize_weights(w_1)
+        w_2 = regularize_weights(w_2)
     
     input_x_train = np.concatenate([set_1, set_2], axis=0)
     input_y_train = np.concatenate([np.zeros(set_1.shape[0]).reshape(-1,1), np.ones(set_2.shape[0]).reshape(-1,1)], axis=0)
     input_w_train = np.concatenate([w_1, w_2], axis=0).reshape(-1, 1)
-
-    input_x_test = np.concatenate([test_B, test_S], axis=0)
-    input_y_test = np.concatenate([np.zeros(test_B.shape[0]).reshape(-1,1), np.ones(test_S.shape[0]).reshape(-1,1)], axis=0)
     
     print(f"Working on {code}...")
     print("      X train, y train, w train:", input_x_train.shape, input_y_train.shape, input_w_train.shape)
-    print("      X test, y test:", input_x_test.shape, input_y_test.shape)
+    
+    if run_test:
+        input_x_test = np.concatenate([test_B, test_S], axis=0)
+        input_y_test = np.concatenate([np.zeros(test_B.shape[0]).reshape(-1,1), np.ones(test_S.shape[0]).reshape(-1,1)], axis=0)
+        print("      X test, y test:", input_x_test.shape, input_y_test.shape)
 
-    for i in range(args.classifier_runs):
+    for i in range(int(args.classifier_runs)):
         
         print(f"Classifier run {i+1} of {args.classifier_runs}.")
         local_id = f"{code}_run{i}"
                 
         # train classifier
-        NN = Classifier(n_inputs=5, layers=classifier_params["layers"], learning_rate=classifier_params["learning_rate"], device=device)
+        NN = Classifier(n_inputs=5, layers=classifier_params["layers"], learning_rate=classifier_params["learning_rate"], device=device, scale_data=False)
         NN.train(input_x_train, input_y_train, weights=input_w_train,  save_model=True, model_name = f"model_{local_id}" , n_epochs=classifier_params["n_epochs"], seed = i, outdir=save_dir, plot_loss=False)
 
-        scores = NN.evaluation(input_x_test)
-        auc = roc_auc_score(input_y_test, scores)
-        if auc < 0.5: auc = 1.0 - auc
-        print(f"   AUC: {auc}")
+        if run_test:
+            scores = NN.evaluation(input_x_test)
+            auc = roc_auc_score(input_y_test, scores)
+            if auc < 0.5: auc = 1.0 - auc
+            print(f"   AUC: {auc}")
                 
     print()
 
@@ -84,6 +96,7 @@ def main():
         
     n_context = 2
 
+ 
     # load in the test sets
     test_events = np.load(f"{static_data_dir}/test_SR.npz")
     test_bkg = test_events["bkg_events_SR"][:,n_context:]
@@ -95,7 +108,7 @@ def main():
         full_sup_events = np.load(f"{static_data_dir}/fullsup_SR.npz")
         set_1 = full_sup_events["bkg_events_SR"][:,n_context:]
         set_2 = full_sup_events["sig_events_SR"][:,n_context:]
-        run_eval(set_1, set_2, test_bkg, test_sig, code="full_sup", save_dir=eval_dir, classifier_params=params, device=device)
+        run_eval(set_1, set_2, code="full_sup", save_dir=eval_dir, classifier_params=params, device=device, run_test=True, test_B=test_bkg, test_S=test_sig)
         print()
         
     if args.ideal:
@@ -103,7 +116,7 @@ def main():
         data_events = np.load(path_to_data)    
         set_1 = ideal_bkg_events["ideal_bkg_events_sr"][:,n_context:]
         set_2 = data_events["data_events_sr"][:,n_context:]
-        run_eval(set_1, set_2, test_bkg, test_sig, code=f"ideal_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device)
+        run_eval(set_1, set_2, code=f"ideal_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device, run_test=False, test_B=test_bkg, test_S=test_sig)
         print()
         
     if args.reweight:
@@ -112,7 +125,7 @@ def main():
         set_1 = reweight_events["mc_samples"][:,n_context:]
         w_1 =  reweight_events["w_sr"]
         set_2 = data_events["data_events_sr"][:,n_context:]
-        run_eval(set_1, set_2, test_bkg, test_sig, w_1 = w_1, code=f"reweight_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device)
+        run_eval(set_1, set_2, w_1 = w_1, code=f"reweight_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device, run_test=False, test_B=test_bkg, test_S=test_sig, crop_weights=True)
         print()
         
     if args.generate:
@@ -122,7 +135,7 @@ def main():
         set_1 = generate_events["samples"]
         w_1 =  context_weights["w_sr"]
         set_2 = data_events["data_events_sr"][:,n_context:]
-        run_eval(set_1, set_2, test_bkg, test_sig, w_1 = w_1, code=f"generate_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device)
+        run_eval(set_1, set_2, w_1 = w_1, code=f"generate_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device, run_test=False, test_B=test_bkg, test_S=test_sig, crop_weights=True)
         print()
         
     if args.morph:
@@ -132,7 +145,7 @@ def main():
         set_1 = morph_events["samples"]
         w_1 =  context_weights["w_sr"]
         set_2 = data_events["data_events_sr"][:,n_context:]
-        run_eval(set_1, set_2, test_bkg, test_sig, w_1 = w_1, code=f"morph_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device)
+        run_eval(set_1, set_2, w_1 = w_1, code=f"morph_s{args.signal}", save_dir=eval_dir, classifier_params=params, device=device, run_test=False, test_B=test_bkg, test_S=test_sig, crop_weights=True)
         print()
         
     print("All done!")
